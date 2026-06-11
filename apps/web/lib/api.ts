@@ -27,7 +27,10 @@ export async function apiFetch<T>(
   endpoint: string,
   options: RequestInit = {}
 ): Promise<{ success: boolean; data: T; meta?: Record<string, unknown> }> {
-  const cleanEndpoint = endpoint.startsWith("/") ? endpoint : `/${endpoint}`;
+  let cleanEndpoint = endpoint.startsWith("/") ? endpoint : `/${endpoint}`;
+  if (!cleanEndpoint.startsWith("/v1/")) {
+    cleanEndpoint = `/v1${cleanEndpoint}`;
+  }
   const baseUrl = env.NEXT_PUBLIC_API_URL.endsWith("/")
     ? env.NEXT_PUBLIC_API_URL.slice(0, -1)
     : env.NEXT_PUBLIC_API_URL;
