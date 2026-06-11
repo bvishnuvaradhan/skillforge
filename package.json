@@ -12,7 +12,8 @@
     "dev": "turbo run dev",
     "lint": "turbo run lint",
     "format": "prettier --write \"**/*.{ts,tsx,js,jsx,json,md}\"",
-    "test": "turbo run test"
+    "test": "turbo run test",
+    "postinstall": "npm run prisma:generate --workspace=@skillforge/db"
   },
   "devDependencies": {
     "turbo": "^1.13.0",
