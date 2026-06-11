@@ -1,0 +1,11 @@
+{
+  "name": "@skillforge/eslint-config",
+  "version": "0.0.1",
+  "private": true,
+  "main": "base.js",
+  "exports": {
+    "./base": "./base.js",
+    "./nextjs": "./nextjs.js",
+    "./nestjs": "./nestjs.js"
+  }
+}

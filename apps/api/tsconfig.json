@@ -1,0 +1,7 @@
+{
+  "extends": "@skillforge/tsconfig/nestjs.json",
+  "compilerOptions": {
+    "incremental": true
+  },
+  "include": ["src/**/*", "test/**/*"]
+}

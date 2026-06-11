@@ -1,0 +1,20 @@
+{
+  "name": "@skillforge/db",
+  "version": "0.0.1",
+  "private": true,
+  "main": "./dist/index.js",
+  "types": "./dist/index.d.ts",
+  "scripts": {
+    "build": "tsc",
+    "prisma:generate": "prisma generate",
+    "prisma:migrate": "prisma migrate dev"
+  },
+  "dependencies": {
+    "@prisma/client": "^5.14.0"
+  },
+  "devDependencies": {
+    "@skillforge/tsconfig": "*",
+    "prisma": "^5.14.0",
+    "typescript": "^5.4.5"
+  }
+}

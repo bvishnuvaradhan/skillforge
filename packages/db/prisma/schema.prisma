@@ -1,0 +1,180 @@
+datasource db {
+  provider = "mongodb"
+  url      = env("DATABASE_URL")
+}
+
+generator client {
+  provider = "prisma-client-js"
+}
+
+enum Role {
+  student
+  mentor
+  admin
+}
+
+enum Plan {
+  free
+  premium
+}
+
+enum Goal {
+  placements
+  competitive
+  dsa
+  interviews
+}
+
+enum PrivacySetting {
+  private
+  team
+  public
+}
+
+enum Provider {
+  google
+  github
+}
+
+enum CodingPlatform {
+  leetcode
+  codeforces
+  codechef
+  github
+}
+
+model User {
+  id                 String          @id @default(auto()) @map("_id") @db.ObjectId
+  email              String          @unique
+  passwordHash       String?         @map("password_hash")
+  name               String
+  avatarUrl          String?         @map("avatar_url")
+  role               Role
+  plan               Plan            @default(free)
+  planExpiresAt      DateTime?       @map("plan_expires_at")
+  primaryGoal        Goal?           @map("primary_goal")
+  onboardingComplete Boolean         @default(false) @map("onboarding_complete")
+  streakCount        Int             @default(0) @map("streak_count")
+  lastActiveAt       DateTime?       @map("last_active_at")
+  privacySetting     PrivacySetting  @default(private) @map("privacy_setting")
+  createdAt          DateTime        @default(now()) @map("created_at")
+  updatedAt          DateTime        @default(now()) @updatedAt @map("updated_at")
+  deletedAt          DateTime?       @map("deleted_at")
+
+  oauthAccounts      OauthAccount[]
+  sessions           Session[]
+  codingProfiles     CodingProfile[]
+  dltState           DltState?
+  roadmap            Roadmap?
+  masteryScores      MasteryScore[]
+
+  @@index([role])
+  @@map("users")
+}
+
+model OauthAccount {
+  id           String   @id @default(auto()) @map("_id") @db.ObjectId
+  userId       String   @map("user_id") @db.ObjectId
+  provider     Provider
+  providerId   String   @map("provider_id")
+  accessToken  String?  @map("access_token")
+  refreshToken String?  @map("refresh_token")
+  createdAt    DateTime @default(now()) @map("created_at")
+
+  user         User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@map("oauth_accounts")
+}
+
+model Session {
+  id        String   @id @default(auto()) @map("_id") @db.ObjectId
+  userId    String   @map("user_id") @db.ObjectId
+  tokenHash String   @unique @map("token_hash")
+  expiresAt DateTime @map("expires_at")
+  ipAddress String?  @map("ip_address")
+  userAgent String?  @map("user_agent")
+  createdAt DateTime @default(now()) @map("created_at")
+
+  user      User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@index([userId])
+  @@map("sessions")
+}
+
+model CodingProfile {
+  id           String         @id @default(auto()) @map("_id") @db.ObjectId
+  userId       String         @map("user_id") @db.ObjectId
+  platform     CodingPlatform
+  username     String
+  solvedCount  Int            @default(0) @map("solved_count")
+  rating       Int?
+  lastSyncedAt DateTime?      @map("last_synced_at")
+  rawData      Json?          @map("raw_data")
+  createdAt    DateTime       @default(now()) @map("created_at")
+
+  user         User           @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@index([userId])
+  @@map("coding_profiles")
+}
+
+enum LearningStyle {
+  visual
+  game_based
+  reading
+  problem_first
+}
+
+model DltState {
+  id                 String         @id @default(auto()) @map("_id") @db.ObjectId
+  userId             String         @unique @map("user_id") @db.ObjectId
+  knowledgeState     Json           @default("{}") @map("knowledge_state")
+  overallMastery     Float          @default(0) @map("overall_mastery")
+  overallRetention   Float          @default(0) @map("overall_retention")
+  learningStyle      LearningStyle? @map("learning_style")
+  consistencyScore   Float          @default(0) @map("consistency_score")
+  careerReadiness    Json           @default("{}") @map("career_readiness")
+  placementReadiness Float          @default(0) @map("placement_readiness")
+  xpTotal            Int            @default(0) @map("xp_total")
+  level              Int            @default(1)
+  lastComputedAt     DateTime       @default(now()) @map("last_computed_at")
+  updatedAt          DateTime       @default(now()) @updatedAt @map("updated_at")
+
+  user               User           @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@map("dlt_states")
+}
+
+model Roadmap {
+  id                String   @id @default(auto()) @map("_id") @db.ObjectId
+  userId            String   @unique @map("user_id") @db.ObjectId
+  goal              Goal
+  steps             Json
+  currentStepIndex  Int      @default(0) @map("current_step_index")
+  generatedAt       DateTime @default(now()) @map("generated_at")
+  updatedAt         DateTime @default(now()) @updatedAt @map("updated_at")
+
+  user              User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@map("roadmaps")
+}
+
+model MasteryScore {
+  id               String    @id @default(auto()) @map("_id") @db.ObjectId
+  userId           String    @map("user_id") @db.ObjectId
+  topicId          String    @map("topic_id")
+  score            Float     @default(0)
+  gameScore        Float     @default(0) @map("game_score")
+  assessmentScore  Float     @default(0) @map("assessment_score")
+  codingScore      Float     @default(0) @map("coding_score")
+  interviewScore   Float     @default(0) @map("interview_score")
+  retentionScore   Float     @default(0) @map("retention_score")
+  lastActivityAt   DateTime? @map("last_activity_at")
+  createdAt        DateTime  @default(now()) @map("created_at")
+  updatedAt        DateTime  @default(now()) @updatedAt @map("updated_at")
+
+  user             User      @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@index([userId])
+  @@map("mastery_scores")
+}
