@@ -8,8 +8,9 @@ export class UsersService {
    * Helper to format a User model into a safe user object without passwordHash
    */
   private formatSafeUser(user: User) {
-    const { passwordHash, ...safeUser } = user;
-    return safeUser;
+    const safeUser = { ...user } as Partial<User>;
+    delete safeUser.passwordHash;
+    return safeUser as Omit<User, 'passwordHash'>;
   }
 
   /**
