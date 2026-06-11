@@ -20,8 +20,6 @@ export const SignupForm = () => {
   const {
     register,
     handleSubmit,
-    setValue,
-    watch,
     formState: { errors },
   } = useForm<SignupInput>({
     resolver: zodResolver(signupSchema),
@@ -30,12 +28,10 @@ export const SignupForm = () => {
       email: "",
       password: "",
       confirmPassword: "",
-      role: "student",
       terms: false,
     },
   });
 
-  const selectedRole = watch("role");
 
   const onSubmit = async (data: SignupInput) => {
     setIsLoading(true);
@@ -44,10 +40,10 @@ export const SignupForm = () => {
         name: data.name,
         email: data.email,
         password: data.password,
-        role: data.role,
+        role: "student", // Only students can self-register; mentor accounts are created by Admin
       });
       toast.success("Account created successfully! Welcome to SkillForge!");
-      
+
       // New users always direct to onboarding first
       router.push(ROUTES.ONBOARDING);
       router.refresh();
@@ -68,6 +64,17 @@ export const SignupForm = () => {
 
   return (
     <div className="w-full flex flex-col gap-6">
+      {/* Student-only info note */}
+      <div className="flex items-start gap-2 bg-brand-cyan/5 border border-brand-cyan/20 rounded-xl px-3.5 py-2.5">
+        <svg className="w-4 h-4 text-brand-cyan mt-0.5 flex-shrink-0" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}>
+          <path strokeLinecap="round" strokeLinejoin="round" d="M13 16h-1v-4h-1m1-4h.01M12 2a10 10 0 100 20A10 10 0 0012 2z" />
+        </svg>
+        <p className="text-xs text-text-secondary leading-relaxed">
+          Student accounts are open to everyone.{" "}
+          <span className="text-text-primary font-semibold">Mentor accounts</span> are created by an Admin — contact your administrator to get mentor access.
+        </p>
+      </div>
+
       <form onSubmit={handleSubmit(onSubmit)} className="flex flex-col gap-4">
         {/* Name input */}
         <Input
@@ -89,43 +96,6 @@ export const SignupForm = () => {
           {...register("email")}
         />
 
-        {/* Role Toggle Selector */}
-        <div className="flex flex-col gap-1.5 w-full">
-          <label className="text-sm font-heading font-medium text-text-secondary">
-            Join as a
-          </label>
-          <div className="grid grid-cols-2 gap-2 bg-bg-secondary p-1 border border-border rounded-xl">
-            <button
-              type="button"
-              disabled={isLoading}
-              onClick={() => setValue("role", "student")}
-              className={`py-2 text-sm font-semibold rounded-lg transition-all duration-300 ${
-                selectedRole === "student"
-                  ? "bg-brand-cyan text-bg-primary shadow-[0_2px_8px_rgba(0,180,216,0.3)]"
-                  : "text-text-secondary hover:text-text-primary hover:bg-[#1e2b45]/10"
-              }`}
-            >
-              Student
-            </button>
-            <button
-              type="button"
-              disabled={isLoading}
-              onClick={() => setValue("role", "mentor")}
-              className={`py-2 text-sm font-semibold rounded-lg transition-all duration-300 ${
-                selectedRole === "mentor"
-                  ? "bg-brand-cyan text-bg-primary shadow-[0_2px_8px_rgba(0,180,216,0.3)]"
-                  : "text-text-secondary hover:text-text-primary hover:bg-[#1e2b45]/10"
-              }`}
-            >
-              Mentor
-            </button>
-          </div>
-          {errors.role && (
-            <span className="text-xs text-accent-red font-medium mt-0.5">
-              {errors.role.message}
-            </span>
-          )}
-        </div>
 
         {/* Passwords */}
         <Input
