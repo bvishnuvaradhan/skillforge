@@ -59,7 +59,7 @@ export const SignupForm = () => {
     const baseUrl = env.NEXT_PUBLIC_API_URL.endsWith("/")
       ? env.NEXT_PUBLIC_API_URL.slice(0, -1)
       : env.NEXT_PUBLIC_API_URL;
-    return `${baseUrl}/auth/oauth/${provider}`;
+    return `${baseUrl}/v1/auth/oauth/${provider}`;
   };
 
   return (
