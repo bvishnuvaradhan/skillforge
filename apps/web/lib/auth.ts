@@ -24,7 +24,9 @@ export async function loginUser(body: LoginInput) {
   return response.data;
 }
 
-export async function registerUser(body: Omit<SignupInput, "confirmPassword" | "terms">) {
+export async function registerUser(
+  body: Omit<SignupInput, "confirmPassword" | "terms"> & { role: "student" | "mentor" | "admin" }
+) {
   const response = await apiFetch<AuthResponse>("/auth/register", {
     method: "POST",
     body: JSON.stringify(body),

@@ -1,3 +1,9 @@
+import * as dotenv from 'dotenv';
+import * as path from 'path';
+
+// Load environment variables from .env file before other imports
+dotenv.config({ path: path.resolve(__dirname, '../.env') });
+
 import { NestFactory } from '@nestjs/core';
 import { NestExpressApplication } from '@nestjs/platform-express';
 import { AppModule } from './app.module';

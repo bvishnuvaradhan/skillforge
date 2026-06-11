@@ -273,9 +273,9 @@ describe('OnboardingController (e2e)', () => {
       expect(roadmap?.goal).toBe('dsa');
       expect(roadmap?.steps).toBeInstanceOf(Array);
       
-      const stepsArray = roadmap?.steps as unknown as { topic_id: string; status: string }[];
-      expect(stepsArray[0].topic_id).toBe('arrays');
-      expect(stepsArray[0].status).toBe('in_progress');
+      const stepsArray = roadmap!.steps as unknown as { topic_id: string; status: string }[];
+      expect(stepsArray[0]!.topic_id).toBe('arrays');
+      expect(stepsArray[0]!.status).toBe('in_progress');
     });
   });
 });
