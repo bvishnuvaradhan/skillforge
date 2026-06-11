@@ -63,6 +63,9 @@ This document serves as a permanent, read-only record of the work completed, dec
    - Enforced request parsing and form validations on both sides via Zod to guarantee data integrity.
 4. **Mocked DLT Baselines in Phase 1**:
    - Initialized baseline masteries to static weights (Arrays: 0.7, Trees: 0.3) upon assessment completion to test front-to-back state transitions before building the actual ML engines in apps/ai.
+   - > [!IMPORTANT]
+     > These baseline masteries are temporary placeholders. In Phase 2, the DLT calculation engine must parse and analyze the actual persisted diagnostic exam records in the `exam_attempts` table to compute and initialize genuine baseline scores.
+
 
 ---
 
@@ -101,4 +104,25 @@ This document serves as a permanent, read-only record of the work completed, dec
 - **Auth**: Fully operational JWT and Google/GitHub OAuth logins.
 - **Onboarding Wizard**: Active at `/onboarding` and fully integrated.
 - **Tests**: 100% of API E2E test suites (Auth: 15/15; Onboarding: 7/7) compile and pass successfully.
-- **Database**: MongoDB Prisma schema synced, with Redis caching active.
+- **Database**: PostgreSQL Prisma schema synced, with Redis caching active.
+
+---
+
+## 6. Corrections Post-Phase 1
+
+### PostgreSQL Migration (Issue 1)
+- **Problem**: The project originally initialized with MongoDB/Mongoose. However, the system specifications (such as `agents.md` and `SkillForge_DBSchema.docx`) require PostgreSQL as the primary database.
+- **Solution**: 
+  - Removed all MongoDB-specific configurations and mongoose libraries.
+  - Reconfigured the Prisma schema (`schema.prisma`) to use `provider = "postgresql"`.
+  - Replaced MongoDB `@db.ObjectId` with PostgreSQL `@db.Uuid` and `@default(uuid())` across all models.
+  - Applied local database schema pushes and re-generated the Prisma Client query engines.
+  - Verified and refactored tests (such as replacing 24-character hex strings with UUID formats) to conform to the PostgreSQL UUID validation.
+
+### Diagnostic Assessment Persistence (Issue 2)
+- **Problem**: In Phase 1, submitted onboarding diagnostic answers were only graded inside local memory and initialized to static baseline mastery scores, without persisting the actual question responses to the database.
+- **Solution**:
+  - Structured a shared assessment questions package (`@skillforge/types`) under the monorepo, resolving frontend-backend boundary violations.
+  - Created a new database model `ExamAttempt` (`exam_attempts` table) linked to users with UUID keys, custom JSON schemas for rich answer tracking, and compound indexes (`@@index([userId, examType, submittedAt])`) for quick history lookups.
+  - Updated the onboarding service (`submitAssessment` in `onboarding.service.ts`) to validate and grade the incoming answers against the static answer keys, calculate topic percentage breakdowns, and save the attempts directly to the database.
+  - Verified retake persistence and multi-attempt compatibility under integration/E2E test conditions.

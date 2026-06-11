@@ -9,7 +9,7 @@ import { Card } from "../../ui/Card";
 import { Divider } from "../../ui/Divider";
 import { ROUTES } from "../../../constants/routes";
 import { apiFetch } from "../../../lib/api";
-import { ASSESSMENT_QUESTIONS } from "../../../constants/questions";
+import { ASSESSMENT_QUESTIONS } from "@skillforge/types";
 
 type Goal = "placements" | "competitive" | "dsa" | "interviews";
 

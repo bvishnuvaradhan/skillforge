@@ -141,3 +141,27 @@ export interface Resume {
   createdAt: Date;
   updatedAt: Date;
 }
+
+export * from "./questions";
+
+export interface AssessmentAnswer {
+  questionId: string;
+  selectedAnswer: string;
+  correct: boolean;
+  topic: string;
+}
+
+export type ExamType = "ONBOARDING_ASSESSMENT" | "CHECKPOINT" | "REASSESSMENT" | "FINAL_EVALUATION";
+
+export interface ExamAttempt {
+  id: string;
+  userId: string;
+  examType: ExamType;
+  answers: AssessmentAnswer[];
+  score: number | null;
+  maxScore: number | null;
+  topicScores: Record<string, number> | null;
+  submittedAt: Date;
+  createdAt: Date;
+  updatedAt: Date;
+}

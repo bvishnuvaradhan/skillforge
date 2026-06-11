@@ -230,7 +230,7 @@ describe('UsersController (e2e)', () => {
     });
 
     it('should return 404 if profile ID does not exist', async () => {
-      const nonExistentId = '666666666666666666666666'; // 24-char hex string
+      const nonExistentId = '66666666-6666-6666-6666-666666666666'; // Valid UUID format but non-existent
       const response = await request(app.getHttpServer())
         .get(`/users/${nonExistentId}/profile`)
         .set('Cookie', studentCookie)

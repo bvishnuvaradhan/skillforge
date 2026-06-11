@@ -1,6 +1,7 @@
 import { Injectable, BadRequestException } from '@nestjs/common';
 import { prisma, Goal, LearningStyle } from '@skillforge/db';
 import { SetGoalDto, SubmitAssessmentDto } from './onboarding.dto';
+import { ASSESSMENT_QUESTIONS } from '@skillforge/types';
 
 @Injectable()
 export class OnboardingService {
@@ -21,9 +22,59 @@ export class OnboardingService {
   /**
    * Submit diagnostic answers and calculate initial topic mastery scores
    */
-  async submitAssessment(userId: string, _dto: SubmitAssessmentDto) {
-    // Grade the diagnostic questions and calculate baseline scores
-    // For this onboarding step, we award standard baseline scores: arrays (0.7) and trees (0.3)
+  async submitAssessment(userId: string, dto: SubmitAssessmentDto) {
+    // 1. Grade the diagnostic questions and map to rich answer format
+    const richAnswers = dto.answers.map((ans) => {
+      const question = ASSESSMENT_QUESTIONS.find((q) => q.id === ans.question_id);
+      const correct = question ? ans.answer === question.correctAnswer : false;
+      const topic = question ? question.topic.toLowerCase() : 'unknown';
+
+      return {
+        questionId: ans.question_id,
+        selectedAnswer: ans.answer,
+        correct,
+        topic,
+      };
+    });
+
+    const correctCount = richAnswers.filter((a) => a.correct).length;
+    const totalQuestionsCount = ASSESSMENT_QUESTIONS.length;
+
+    // 2. Compute topic scores (ratio of correct answers per topic)
+    const topicBreakdown: Record<string, number> = {};
+    const topicQuestionCounts: Record<string, { correct: number; total: number }> = {};
+
+    richAnswers.forEach((ans) => {
+      let counts = topicQuestionCounts[ans.topic];
+      if (!counts) {
+        counts = { correct: 0, total: 0 };
+        topicQuestionCounts[ans.topic] = counts;
+      }
+      counts.total += 1;
+      if (ans.correct) {
+        counts.correct += 1;
+      }
+    });
+
+    Object.entries(topicQuestionCounts).forEach(([topic, stats]) => {
+      topicBreakdown[topic] = stats.correct / stats.total;
+    });
+
+    // 3. Persist the attempt in the database
+    await prisma.examAttempt.create({
+      data: {
+        userId,
+        examType: 'ONBOARDING_ASSESSMENT',
+        answers: richAnswers,
+        score: correctCount,
+        maxScore: totalQuestionsCount,
+        topicScores: topicBreakdown,
+      },
+    });
+
+    // 4. Retain baseline mastery scores for onboarding flow compatibility
+    // TODO (Phase 2): Replace these static mock scores (arrays: 0.7, trees: 0.3) with dynamic scores 
+    // calculated from the actual persisted answers in the examAttempt database entry above.
     const baselineScores = [
       { topicId: 'arrays', score: 0.7 },
       { topicId: 'trees', score: 0.3 },

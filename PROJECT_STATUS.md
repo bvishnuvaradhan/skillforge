@@ -13,7 +13,7 @@ Completed
 - AI Service Scaffold — FastAPI Python service scaffolded in apps/ai with GET /health endpoint and requirements.txt
 - Environment Variables — .env.example files created in apps/web, apps/api, and apps/ai documentation from agents.md
 - CI/CD pipeline — GitHub Actions workflow (.github/workflows/ci.yml) created for automated linting and build verification
-- Database Schema — Prisma schema redesigned and pushed to MongoDB with users, oauth_accounts, sessions, and coding_profiles collections, verified using a read/write test script
+- Database Schema — Prisma schema redesigned and pushed to PostgreSQL with users, oauth_accounts, sessions, coding_profiles, and exam_attempts tables, using UUID primary keys and compound indexes, verified using a read/write test script
 - Auth Layer — Register, Login (with rate-limiting), Logout (with Redis blacklist token check), Refresh Token Rotation, JWT Strategy, and NestJS Auth/Roles Guards (fully verified with 15 passing E2E tests)
 - User Profile API — Fetching current user (`GET /users/me`), updating profile (`PATCH /users/me`), soft account deletion (`DELETE /users/me`), and public/private controls on profile retrieval (`GET /users/:id/profile`) (fully verified with E2E tests)
 - Coding Profiles — Manual platform linking (`POST /users/me/coding-profiles`) and unlinking (`DELETE /users/me/coding-profiles/:platform`) for students (fully verified with E2E tests)

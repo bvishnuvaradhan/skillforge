@@ -132,15 +132,15 @@ describe('OAuth Authentication (e2e)', () => {
         .get('/auth/oauth/google/callback')
         .expect(302);
 
-      // Verify redirection to frontend onboarding since onboardingComplete = false
-      expect(response.headers.location).toContain('/onboarding');
+      // Verify redirection to frontend callback route
+      expect(response.headers.location).toContain('/auth/callback');
       expect(response.headers['set-cookie']).toBeDefined();
 
       const cookies = JSON.stringify(response.headers['set-cookie']);
       expect(cookies).toContain('access_token');
       expect(cookies).toContain('refresh_token');
 
-      // Verify user was created in MongoDB
+      // Verify user was created in database
       const user = await prisma.user.findUnique({
         where: { email: 'google-test@example.com' },
       });
@@ -164,7 +164,7 @@ describe('OAuth Authentication (e2e)', () => {
         .get('/auth/oauth/github/callback')
         .expect(302);
 
-      expect(response.headers.location).toContain('/onboarding');
+      expect(response.headers.location).toContain('/auth/callback');
       expect(response.headers['set-cookie']).toBeDefined();
 
       const user = await prisma.user.findUnique({
@@ -226,7 +226,7 @@ describe('OAuth Authentication (e2e)', () => {
         .get('/auth/oauth/google/callback')
         .expect(302);
 
-      expect(response.headers.location).toContain('/onboarding');
+      expect(response.headers.location).toContain('/auth/callback');
 
       // Verify that NO new user was created
       const users = await prisma.user.findMany({
