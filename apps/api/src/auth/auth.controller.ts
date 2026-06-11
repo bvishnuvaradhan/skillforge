@@ -20,30 +20,7 @@ export interface AuthenticatedRequest extends Request {
 export class AuthController {
   constructor(private readonly authService: AuthService) {}
 
-  private setCookies(res: Response, accessToken: string, refreshToken: string) {
-    const isProduction = process.env.NODE_ENV === 'production';
-    
-    res.cookie('access_token', accessToken, {
-      httpOnly: true,
-      secure: isProduction,
-      sameSite: 'lax',
-      maxAge: 15 * 60 * 1000,
-      path: '/',
-    });
 
-    res.cookie('refresh_token', refreshToken, {
-      httpOnly: true,
-      secure: isProduction,
-      sameSite: 'lax',
-      maxAge: 7 * 24 * 60 * 60 * 1000,
-      path: '/',
-    });
-  }
-
-  private clearCookies(res: Response) {
-    res.clearCookie('access_token', { path: '/' });
-    res.clearCookie('refresh_token', { path: '/' });
-  }
 
   @Post('register')
   @UsePipes(new ZodValidationPipe(registerSchema))
@@ -52,7 +29,7 @@ export class AuthController {
     @Res({ passthrough: true }) res: Response,
   ) {
     const result = await this.authService.register(dto);
-    this.setCookies(res, result.accessToken, result.refreshToken);
+    this.authService.setAuthCookies(res, result);
     return {
       success: true,
       data: {
@@ -74,7 +51,7 @@ export class AuthController {
     const userAgent = req.headers['user-agent'] || 'unknown';
     
     const result = await this.authService.login(dto, ipAddress, userAgent);
-    this.setCookies(res, result.accessToken, result.refreshToken);
+    this.authService.setAuthCookies(res, result);
     
     return {
       success: true,
@@ -107,7 +84,7 @@ export class AuthController {
       await this.authService.logout(accessToken, refreshToken);
     }
     
-    this.clearCookies(res);
+    this.authService.clearAuthCookies(res);
     
     return {
       success: true,
@@ -139,7 +116,7 @@ export class AuthController {
     const userAgent = req.headers['user-agent'] || 'unknown';
 
     const tokens = await this.authService.refresh(refreshToken, ipAddress, userAgent);
-    this.setCookies(res, tokens.accessToken, tokens.refreshToken);
+    this.authService.setAuthCookies(res, tokens);
 
     return {
       success: true,
@@ -191,11 +168,9 @@ export class AuthController {
       profile.avatarUrl,
     );
 
-    this.setCookies(res, result.accessToken, result.refreshToken);
+    this.authService.setAuthCookies(res, result);
 
-    const redirectUrl = result.user.onboardingComplete
-      ? `${process.env.FRONTEND_URL ?? 'http://localhost:3000'}/dashboard`
-      : `${process.env.FRONTEND_URL ?? 'http://localhost:3000'}/onboarding`;
+    const redirectUrl = `${process.env.FRONTEND_URL ?? 'http://localhost:3000'}/auth/callback`;
 
     res.redirect(redirectUrl);
   }
@@ -225,11 +200,9 @@ export class AuthController {
       profile.avatarUrl,
     );
 
-    this.setCookies(res, result.accessToken, result.refreshToken);
+    this.authService.setAuthCookies(res, result);
 
-    const redirectUrl = result.user.onboardingComplete
-      ? `${process.env.FRONTEND_URL ?? 'http://localhost:3000'}/dashboard`
-      : `${process.env.FRONTEND_URL ?? 'http://localhost:3000'}/onboarding`;
+    const redirectUrl = `${process.env.FRONTEND_URL ?? 'http://localhost:3000'}/auth/callback`;
 
     res.redirect(redirectUrl);
   }

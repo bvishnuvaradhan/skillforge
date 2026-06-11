@@ -5,6 +5,7 @@ import { RegisterDto, LoginDto } from './auth.dto';
 import { RedisService } from './redis.service';
 import bcrypt from 'bcrypt';
 import crypto from 'crypto';
+import { Response } from 'express';
 
 @Injectable()
 export class AuthService {
@@ -23,8 +24,8 @@ export class AuthService {
   /**
    * Generate access and refresh JWT tokens for a user
    */
-  private async generateTokens(user: { id: string; email: string; role: string }) {
-    const payload = { sub: user.id, email: user.email, role: user.role };
+  private async generateTokens(user: { id: string; email: string; role: string; onboardingComplete: boolean }) {
+    const payload = { sub: user.id, email: user.email, role: user.role, onboardingComplete: user.onboardingComplete };
     
     const accessToken = await this.jwtService.signAsync(payload, {
       secret: process.env.JWT_SECRET ?? 'super_secret_dev_key_at_least_32_characters_long',
@@ -81,6 +82,7 @@ export class AuthService {
         email: user.email,
         role: user.role,
         plan: user.plan,
+        onboardingComplete: user.onboardingComplete,
       },
       ...tokens,
     };
@@ -158,6 +160,7 @@ export class AuthService {
         email: user.email,
         role: user.role,
         plan: user.plan,
+        onboardingComplete: user.onboardingComplete,
       },
       ...tokens,
     };
@@ -246,6 +249,67 @@ export class AuthService {
     await prisma.session.delete({ where: { tokenHash } }).catch(() => {});
 
     return { message: 'Logged out successfully' };
+  }
+
+  /**
+   * Generate access and refresh tokens for a user and save the session in the database
+   */
+  async generateTokensForUser(
+    user: { id: string; email: string; role: string; onboardingComplete: boolean },
+    ipAddress: string,
+    userAgent: string,
+  ) {
+    const tokens = await this.generateTokens(user);
+    const tokenHash = this.hashToken(tokens.refreshToken);
+    const expiresAt = new Date(Date.now() + 7 * 24 * 60 * 60 * 1000);
+
+    await prisma.session.create({
+      data: {
+        userId: user.id,
+        tokenHash,
+        expiresAt,
+        ipAddress,
+        userAgent,
+      },
+    });
+
+    return tokens;
+  }
+
+  /**
+   * Set authentication cookies (access_token, refresh_token) on Express Response
+   */
+  setAuthCookies(
+    res: Response,
+    tokens: { accessToken: string; refreshToken: string },
+  ) {
+    const isProduction = process.env.NODE_ENV === 'production';
+
+    res.cookie('access_token', tokens.accessToken, {
+      httpOnly: true,
+      secure: isProduction,
+      sameSite: 'lax',
+      maxAge: 15 * 60 * 1000,
+      path: '/',
+      priority: 'high',
+    });
+
+    res.cookie('refresh_token', tokens.refreshToken, {
+      httpOnly: true,
+      secure: isProduction,
+      sameSite: 'lax',
+      maxAge: 7 * 24 * 60 * 60 * 1000,
+      path: '/',
+      priority: 'high',
+    });
+  }
+
+  /**
+   * Clear authentication cookies
+   */
+  clearAuthCookies(res: Response) {
+    res.clearCookie('access_token', { path: '/' });
+    res.clearCookie('refresh_token', { path: '/' });
   }
 
   /**
