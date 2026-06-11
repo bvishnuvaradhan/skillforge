@@ -101,4 +101,4 @@ This document serves as a permanent, read-only record of the work completed, dec
 - **Auth**: Fully operational JWT and Google/GitHub OAuth logins.
 - **Onboarding Wizard**: Active at `/onboarding` and fully integrated.
 - **Tests**: 100% of API E2E test suites (Auth: 15/15; Onboarding: 7/7) compile and pass successfully.
-- **Database**: PostgreSQL Prisma schema synced, with Redis caching active.
+- **Database**: MongoDB Prisma schema synced, with Redis caching active.
