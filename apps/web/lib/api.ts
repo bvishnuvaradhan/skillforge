@@ -42,19 +42,55 @@ export async function apiFetch<T>(
     headers.set("Content-Type", "application/json");
   }
 
-  const response = await fetch(url, {
+  let response = await fetch(url, {
     credentials: "include",
     ...options,
     headers,
   });
 
   let payload: ApiResponseEnvelope<T> | null = null;
-  const contentType = response.headers.get("content-type");
-  if (contentType && contentType.includes("application/json")) {
+  const parsePayload = async (res: Response) => {
+    const contentType = res.headers.get("content-type");
+    if (contentType && contentType.includes("application/json")) {
+      try {
+        return (await res.json()) as ApiResponseEnvelope<T>;
+      } catch {
+        return null;
+      }
+    }
+    return null;
+  };
+
+  payload = await parsePayload(response);
+
+  // Auto-refresh token if we hit a 401 Unauthorized, and this is not an auth endpoint
+  const isAuthRequest =
+    cleanEndpoint.startsWith("/v1/auth/login") ||
+    cleanEndpoint.startsWith("/v1/auth/register") ||
+    cleanEndpoint.startsWith("/v1/auth/refresh");
+
+  if (response.status === 401 && !isAuthRequest) {
     try {
-      payload = (await response.json()) as ApiResponseEnvelope<T>;
-    } catch {
-      payload = null;
+      const refreshUrl = `${baseUrl}/v1/auth/refresh`;
+      const refreshRes = await fetch(refreshUrl, {
+        method: "POST",
+        credentials: "include",
+        headers: {
+          "Content-Type": "application/json",
+        },
+      });
+
+      if (refreshRes.ok) {
+        // Retry the original request with the new session cookies
+        response = await fetch(url, {
+          credentials: "include",
+          ...options,
+          headers,
+        });
+        payload = await parsePayload(response);
+      }
+    } catch (refreshErr) {
+      console.error("Silent refresh failed in apiFetch:", refreshErr);
     }
   }
 
