@@ -202,21 +202,26 @@ describe('OnboardingController (e2e)', () => {
     });
 
     it('should submit assessment answers successfully and save MasteryScore entries', async () => {
+      // q1 = Arrays topic, correctAnswer = 'O(1)' → arrays score: 1.0
+      // q2 = Stacks topic, correctAnswer = 'Stack' → stacks score: 1.0
       const response = await request(app.getHttpServer())
         .post('/onboarding/assessment')
         .set('Cookie', studentCookie)
         .send({
           answers: [
-            { question_id: 'q1', answer: 'A' },
-            { question_id: 'q2', answer: 'B' },
+            { question_id: 'q1', answer: 'O(1)' },
+            { question_id: 'q2', answer: 'Stack' },
           ],
         })
         .expect(200);
 
       expect(response.body.success).toBe(true);
       expect(response.body.data.message).toBe('Assessment complete');
-      expect(response.body.data.results.topic_scores.arrays).toBe(0.7);
-      expect(response.body.data.results.topic_scores.trees).toBe(0.3);
+      // Real computed scores from actual answers
+      expect(response.body.data.results.topic_scores.arrays).toBe(1.0);
+      expect(response.body.data.results.topic_scores.stacks).toBe(1.0);
+      expect(response.body.data.results.score).toBe(2); // 2 correct
+      expect(response.body.data.results.max_score).toBe(15); // 15 total questions
 
       // Verify database entries
       const scores = await prisma.masteryScore.findMany({
@@ -225,12 +230,12 @@ describe('OnboardingController (e2e)', () => {
       expect(scores.length).toBe(2);
       
       const arraysScore = scores.find(s => s.topicId === 'arrays');
-      expect(arraysScore?.score).toBe(0.7);
-      expect(arraysScore?.assessmentScore).toBe(0.7);
+      expect(arraysScore?.score).toBe(1.0);
+      expect(arraysScore?.assessmentScore).toBe(1.0);
 
-      const treesScore = scores.find(s => s.topicId === 'trees');
-      expect(treesScore?.score).toBe(0.3);
-      expect(treesScore?.assessmentScore).toBe(0.3);
+      const stacksScore = scores.find(s => s.topicId === 'stacks');
+      expect(stacksScore?.score).toBe(1.0);
+      expect(stacksScore?.assessmentScore).toBe(1.0);
     });
   });
 
@@ -253,7 +258,7 @@ describe('OnboardingController (e2e)', () => {
 
       expect(response.body.success).toBe(true);
       expect(response.body.data.dlt).toBeDefined();
-      expect(response.body.data.dlt.overall_mastery).toBe(0.35);
+      expect(response.body.data.dlt.overall_mastery).toBe(1.0);
       expect(response.body.data.dlt.worlds_unlocked).toContain('variables-kingdom');
       expect(response.body.data.roadmap.steps).toBeDefined();
 
@@ -264,7 +269,7 @@ describe('OnboardingController (e2e)', () => {
       // Verify DltState exists in DB
       const dlt = await prisma.dltState.findUnique({ where: { userId: studentId } });
       expect(dlt).not.toBeNull();
-      expect(dlt?.overallMastery).toBe(0.35);
+      expect(dlt?.overallMastery).toBe(1.0);
       expect(dlt?.learningStyle).toBe('game_based');
 
       // Verify Roadmap exists in DB

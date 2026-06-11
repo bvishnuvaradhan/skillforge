@@ -72,25 +72,18 @@ export class OnboardingService {
       },
     });
 
-    // 4. Retain baseline mastery scores for onboarding flow compatibility
-    // TODO (Phase 2): Replace these static mock scores (arrays: 0.7, trees: 0.3) with dynamic scores 
-    // calculated from the actual persisted answers in the examAttempt database entry above.
-    const baselineScores = [
-      { topicId: 'arrays', score: 0.7 },
-      { topicId: 'trees', score: 0.3 },
-    ];
-
-    for (const item of baselineScores) {
+    // 4. Persist real mastery scores computed from actual exam attempt data
+    for (const [topicId, score] of Object.entries(topicBreakdown)) {
       const existing = await prisma.masteryScore.findFirst({
-        where: { userId, topicId: item.topicId },
+        where: { userId, topicId },
       });
 
       if (existing) {
         await prisma.masteryScore.update({
           where: { id: existing.id },
           data: {
-            score: item.score,
-            assessmentScore: item.score,
+            score,
+            assessmentScore: score,
             lastActivityAt: new Date(),
           },
         });
@@ -98,9 +91,9 @@ export class OnboardingService {
         await prisma.masteryScore.create({
           data: {
             userId,
-            topicId: item.topicId,
-            score: item.score,
-            assessmentScore: item.score,
+            topicId,
+            score,
+            assessmentScore: score,
             lastActivityAt: new Date(),
           },
         });
@@ -109,10 +102,10 @@ export class OnboardingService {
 
     return {
       results: {
-        topic_scores: {
-          arrays: 0.7,
-          trees: 0.3,
-        },
+        score: correctCount,
+        max_score: totalQuestionsCount,
+        percentage: totalQuestionsCount > 0 ? correctCount / totalQuestionsCount : 0,
+        topic_scores: topicBreakdown,
       },
       message: 'Assessment complete',
     };
@@ -154,7 +147,14 @@ export class OnboardingService {
       data: { onboardingComplete: true },
     });
 
-    // Initialize DltState
+    // Initialize DltState based on actual diagnostic assessment scores
+    const masteryScores = await prisma.masteryScore.findMany({
+      where: { userId },
+    });
+    const computedMastery = masteryScores.length > 0
+      ? parseFloat((masteryScores.reduce((sum, s) => sum + s.score, 0) / masteryScores.length).toFixed(3))
+      : 0.35;
+
     const existingDlt = await prisma.dltState.findUnique({
       where: { userId },
     });
@@ -164,8 +164,8 @@ export class OnboardingService {
       dltState = await prisma.dltState.update({
         where: { userId },
         data: {
-          overallMastery: 0.35,
-          overallRetention: 0.65,
+          overallMastery: computedMastery,
+          overallRetention: 0.75,
           learningStyle: 'game_based' as LearningStyle,
         },
       });
@@ -173,8 +173,8 @@ export class OnboardingService {
       dltState = await prisma.dltState.create({
         data: {
           userId,
-          overallMastery: 0.35,
-          overallRetention: 0.65,
+          overallMastery: computedMastery,
+          overallRetention: 0.75,
           learningStyle: 'game_based' as LearningStyle,
         },
       });

@@ -5,10 +5,15 @@ const envSchema = z.object({
     .string()
     .min(1, "NEXT_PUBLIC_API_URL must not be empty")
     .default("http://localhost:3001"),
+  NEXT_PUBLIC_SOCKET_URL: z
+    .string()
+    .optional()
+    .default("http://localhost:3001"),
 });
 
 const result = envSchema.safeParse({
   NEXT_PUBLIC_API_URL: process.env.NEXT_PUBLIC_API_URL,
+  NEXT_PUBLIC_SOCKET_URL: process.env.NEXT_PUBLIC_SOCKET_URL,
 });
 
 if (!result.success) {
@@ -20,4 +25,4 @@ if (!result.success) {
 
 export const env = result.success
   ? result.data
-  : { NEXT_PUBLIC_API_URL: "http://localhost:3001" };
+  : { NEXT_PUBLIC_API_URL: "http://localhost:3001", NEXT_PUBLIC_SOCKET_URL: "http://localhost:3001" };

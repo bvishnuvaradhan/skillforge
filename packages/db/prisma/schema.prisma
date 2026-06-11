@@ -43,6 +43,70 @@ enum CodingPlatform {
   github
 }
 
+enum LearningStyle {
+  visual
+  game_based
+  reading
+  problem_first
+}
+
+enum ExamType {
+  ONBOARDING_ASSESSMENT
+  CHECKPOINT
+  REASSESSMENT
+  FINAL_EVALUATION
+}
+
+enum WorldStatus {
+  draft
+  published
+  archived
+}
+
+enum LessonStatus {
+  draft
+  published
+}
+
+enum GameType {
+  logic_builder
+  loop_builder
+  bfs_explorer
+  dfs_adventure
+  recursion_maze
+  sliding_window
+  dp_builder
+  graph_puzzle
+  greedy_arena
+  ifelse_constructor
+  function_workshop
+}
+
+enum BossLevel {
+  mini
+  world
+  grand
+}
+
+enum BadgeRarity {
+  common
+  rare
+  epic
+  legendary
+}
+
+enum WorldProgressStatus {
+  locked
+  unlocked
+  in_progress
+  completed
+}
+
+enum AccessTier {
+  free
+  premium
+}
+
 model User {
   id                 String          @id @default(uuid()) @db.Uuid
   email              String          @unique
@@ -68,6 +132,10 @@ model User {
   roadmap            Roadmap?
   masteryScores      MasteryScore[]
   examAttempts       ExamAttempt[]
+  worldProgress      UserWorldProgress[]
+  gameAttempts       GameAttempt[]
+  bossAttempts       BossAttempt[]
+  userBadges         UserBadge[]
 
   @@index([role])
   @@map("users")
@@ -84,6 +152,7 @@ model OauthAccount {
 
   user         User     @relation(fields: [userId], references: [id], onDelete: Cascade)
 
+  @@index([userId])
   @@map("oauth_accounts")
 }
 
@@ -117,13 +186,6 @@ model CodingProfile {
 
   @@index([userId])
   @@map("coding_profiles")
-}
-
-enum LearningStyle {
-  visual
-  game_based
-  reading
-  problem_first
 }
 
 model DltState {
@@ -177,14 +239,8 @@ model MasteryScore {
   user             User      @relation(fields: [userId], references: [id], onDelete: Cascade)
 
   @@index([userId])
+  @@index([userId, topicId])
   @@map("mastery_scores")
-}
-
-enum ExamType {
-  ONBOARDING_ASSESSMENT
-  CHECKPOINT
-  REASSESSMENT
-  FINAL_EVALUATION
 }
 
 model ExamAttempt {
@@ -206,4 +262,175 @@ model ExamAttempt {
   @@index([submittedAt])
   @@index([userId, examType, submittedAt])
   @@map("exam_attempts")
+}
+
+model World {
+  id             String              @id @default(uuid()) @db.Uuid
+  slug           String              @unique
+  name           String
+  description    String
+  orderIndex     Int                 @map("order_index")
+  status         WorldStatus         @default(draft)
+  unlockCriteria Json                @map("unlock_criteria")
+  xpReward       Int                 @default(0) @map("xp_reward")
+  createdAt      DateTime            @default(now()) @map("created_at")
+  updatedAt      DateTime            @default(now()) @updatedAt @map("updated_at")
+
+  lessons        Lesson[]
+  games          Game[]
+  bossBattles    BossBattle[]
+  progressEntries UserWorldProgress[]
+
+  @@index([slug])
+  @@map("worlds")
+}
+
+model Lesson {
+  id               String       @id @default(uuid()) @db.Uuid
+  worldId          String       @map("world_id") @db.Uuid
+  title            String
+  content          Json
+  orderIndex       Int          @map("order_index")
+  estimatedMinutes Int          @default(10) @map("estimated_minutes")
+  topicTags        String[]     @map("topic_tags")
+  status           LessonStatus @default(draft)
+  createdAt        DateTime     @default(now()) @map("created_at")
+
+  world            World        @relation(fields: [worldId], references: [id], onDelete: Cascade)
+
+  @@index([worldId])
+  @@map("lessons")
+}
+
+model Game {
+  id                  String        @id @default(uuid()) @db.Uuid
+  worldId             String        @map("world_id") @db.Uuid
+  name                String
+  gameType            GameType      @map("game_type")
+  config              Json
+  topicTags           String[]      @map("topic_tags")
+  masteryContribution Float         @default(0.3) @map("mastery_contribution")
+  xpReward            Int           @default(50) @map("xp_reward")
+  orderIndex          Int           @map("order_index")
+  tier                AccessTier    @default(free)
+  createdAt           DateTime      @default(now()) @map("created_at")
+
+  world               World         @relation(fields: [worldId], references: [id], onDelete: Cascade)
+  attempts            GameAttempt[]
+
+  @@index([worldId])
+  @@map("games")
+}
+
+model BossBattle {
+  id                  String         @id @default(uuid()) @db.Uuid
+  worldId             String         @map("world_id") @db.Uuid
+  name                String
+  level               BossLevel
+  questions           Json
+  passThreshold       Float          @default(0.8) @map("pass_threshold")
+  xpReward            Int            @map("xp_reward")
+  badgeId             String?        @map("badge_id") @db.Uuid
+  requiresHumanReview Boolean        @default(false) @map("requires_human_review")
+  createdAt           DateTime       @default(now()) @map("created_at")
+
+  world               World          @relation(fields: [worldId], references: [id], onDelete: Cascade)
+  badge               Badge?         @relation(fields: [badgeId], references: [id], onDelete: SetNull)
+  attempts            BossAttempt[]
+
+  @@index([worldId])
+  @@index([badgeId])
+  @@map("boss_battles")
+}
+
+model Badge {
+  id          String        @id @default(uuid()) @db.Uuid
+  name        String
+  description String
+  imageUrl    String        @map("image_url")
+  rarity      BadgeRarity   @default(common)
+  isSecret    Boolean       @default(false) @map("is_secret")
+  createdAt   DateTime      @default(now()) @map("created_at")
+
+  bossBattles BossBattle[]
+  userBadges  UserBadge[]
+
+  @@map("badges")
+}
+
+model UserWorldProgress {
+  id               String              @id @default(uuid()) @db.Uuid
+  userId           String              @map("user_id") @db.Uuid
+  worldId          String              @map("world_id") @db.Uuid
+  status           WorldProgressStatus @default(locked)
+  unlockedAt       DateTime?           @map("unlocked_at")
+  completedAt      DateTime?           @map("completed_at")
+  lessonsCompleted Int                 @default(0) @map("lessons_completed")
+  gamesCompleted   Int                 @default(0) @map("games_completed")
+  xpEarned         Int                 @default(0) @map("xp_earned")
+  createdAt        DateTime            @default(now()) @map("created_at")
+  updatedAt        DateTime            @default(now()) @updatedAt @map("updated_at")
+
+  user             User                @relation(fields: [userId], references: [id], onDelete: Cascade)
+  world            World               @relation(fields: [worldId], references: [id], onDelete: Cascade)
+
+  @@unique([userId, worldId])
+  @@index([userId])
+  @@index([worldId])
+  @@map("user_world_progress")
+}
+
+model GameAttempt {
+  id            String   @id @default(uuid()) @db.Uuid
+  userId        String   @map("user_id") @db.Uuid
+  gameId        String   @map("game_id") @db.Uuid
+  score         Float
+  hintsUsed     Int      @default(0) @map("hints_used")
+  timeSeconds   Int      @map("time_seconds")
+  passed        Boolean
+  attemptNumber Int      @default(1) @map("attempt_number")
+  createdAt     DateTime @default(now()) @map("created_at")
+
+  user          User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+  game          Game     @relation(fields: [gameId], references: [id], onDelete: Cascade)
+
+  @@index([userId])
+  @@index([gameId])
+  @@index([userId, gameId])
+  @@map("game_attempts")
+}
+
+model BossAttempt {
+  id            String      @id @default(uuid()) @db.Uuid
+  userId        String      @map("user_id") @db.Uuid
+  bossId        String      @map("boss_id") @db.Uuid
+  score         Float
+  passed        Boolean
+  answers       Json
+  timeSeconds   Int         @map("time_seconds")
+  attemptNumber Int         @default(1) @map("attempt_number")
+  createdAt     DateTime    @default(now()) @map("created_at")
+
+  user          User        @relation(fields: [userId], references: [id], onDelete: Cascade)
+  boss          BossBattle  @relation(fields: [bossId], references: [id], onDelete: Cascade)
+
+  @@index([userId])
+  @@index([bossId])
+  @@index([userId, bossId])
+  @@map("boss_attempts")
+}
+
+model UserBadge {
+  id       String   @id @default(uuid()) @db.Uuid
+  userId   String   @map("user_id") @db.Uuid
+  badgeId  String   @map("badge_id") @db.Uuid
+  earnedAt DateTime @default(now()) @map("earned_at")
+
+  user     User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+  badge    Badge    @relation(fields: [badgeId], references: [id], onDelete: Cascade)
+
+  @@unique([userId, badgeId])
+  @@index([userId])
+  @@index([badgeId])
+  @@map("user_badges")
 }

@@ -11,6 +11,7 @@
   "dependencies": {
     "@hookform/resolvers": "^5.4.0",
     "@skillforge/types": "*",
+    "@tanstack/react-query": "^5.101.0",
     "clsx": "^2.1.1",
     "framer-motion": "^12.40.0",
     "jose": "^6.2.3",
@@ -19,9 +20,11 @@
     "react": "^18.3.1",
     "react-dom": "^18.3.1",
     "react-hook-form": "^7.78.0",
+    "socket.io-client": "^4.8.3",
     "sonner": "^2.0.7",
     "tailwind-merge": "^3.6.0",
-    "zod": "^4.4.3"
+    "zod": "^4.4.3",
+    "zustand": "^5.0.14"
   },
   "devDependencies": {
     "@skillforge/eslint-config": "*",

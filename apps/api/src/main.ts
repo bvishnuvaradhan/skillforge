@@ -6,6 +6,7 @@ dotenv.config({ path: path.resolve(__dirname, '../.env') });
 
 import { NestFactory } from '@nestjs/core';
 import { NestExpressApplication } from '@nestjs/platform-express';
+import { IoAdapter } from '@nestjs/platform-socket.io';
 import { AppModule } from './app.module';
 import cookieParser from 'cookie-parser';
 
@@ -27,8 +28,12 @@ async function bootstrap() {
   // Enable cookie parsing middleware for httpOnly cookies
   app.use(cookieParser());
 
+  // Enable Socket.io adapter
+  app.useWebSocketAdapter(new IoAdapter(app));
+
   const port = process.env.PORT ?? 3001;
   await app.listen(port);
   console.log(`Application is running on: http://localhost:${port}/v1`);
+  console.log(`WebSocket server listening on ws://localhost:${port}`);
 }
 bootstrap();
