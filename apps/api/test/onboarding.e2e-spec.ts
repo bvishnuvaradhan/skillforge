@@ -3,6 +3,7 @@ import { NestExpressApplication } from '@nestjs/platform-express';
 import request from 'supertest';
 import { AppModule } from './../src/app.module';
 import { prisma } from '@skillforge/db';
+import { ASSESSMENT_QUESTIONS } from '@skillforge/types';
 import cookieParser from 'cookie-parser';
 
 jest.setTimeout(30000);
@@ -202,32 +203,29 @@ describe('OnboardingController (e2e)', () => {
     });
 
     it('should submit assessment answers successfully and save MasteryScore entries', async () => {
-      // q1 = Arrays topic, correctAnswer = 'O(1)' → arrays score: 1.0
-      // q2 = Stacks topic, correctAnswer = 'Stack' → stacks score: 1.0
       const response = await request(app.getHttpServer())
         .post('/onboarding/assessment')
         .set('Cookie', studentCookie)
         .send({
-          answers: [
-            { question_id: 'q1', answer: 'O(1)' },
-            { question_id: 'q2', answer: 'Stack' },
-          ],
+          answers: ASSESSMENT_QUESTIONS.map(q => ({
+            question_id: q.id,
+            answer: q.correctAnswer,
+          })),
         })
         .expect(200);
 
       expect(response.body.success).toBe(true);
       expect(response.body.data.message).toBe('Assessment complete');
-      // Real computed scores from actual answers
       expect(response.body.data.results.topic_scores.arrays).toBe(1.0);
       expect(response.body.data.results.topic_scores.stacks).toBe(1.0);
-      expect(response.body.data.results.score).toBe(2); // 2 correct
-      expect(response.body.data.results.max_score).toBe(15); // 15 total questions
+      expect(response.body.data.results.score).toBe(ASSESSMENT_QUESTIONS.length);
+      expect(response.body.data.results.max_score).toBe(ASSESSMENT_QUESTIONS.length);
 
       // Verify database entries
       const scores = await prisma.masteryScore.findMany({
         where: { userId: studentId },
       });
-      expect(scores.length).toBe(2);
+      expect(scores.length).toBeGreaterThanOrEqual(2);
       
       const arraysScore = scores.find(s => s.topicId === 'arrays');
       expect(arraysScore?.score).toBe(1.0);
@@ -260,6 +258,9 @@ describe('OnboardingController (e2e)', () => {
       expect(response.body.data.dlt).toBeDefined();
       expect(response.body.data.dlt.overall_mastery).toBe(1.0);
       expect(response.body.data.dlt.worlds_unlocked).toContain('variables-kingdom');
+      expect(response.body.data.dlt.worlds_unlocked).toContain('conditions-valley');
+      expect(response.body.data.dlt.worlds_unlocked).toContain('loop-forest');
+      expect(response.body.data.dlt.worlds_unlocked).toContain('array-arena');
       expect(response.body.data.roadmap.steps).toBeDefined();
 
       // Verify db deactivation checks are cleared

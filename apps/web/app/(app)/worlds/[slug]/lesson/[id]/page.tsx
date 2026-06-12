@@ -15,14 +15,24 @@ interface LessonDetail {
   order_index: number;
   estimated_minutes: number;
   topic_tags: string[];
+  completed: boolean;
 }
 
-// Simple content renderer for structured lesson JSON
+// Structured content renderer supporting both blocks and sections JSON formats
 function LessonContentRenderer({ content }: { content: Record<string, unknown> }) {
-  const sections = (content.sections as Array<{ type: string; text?: string; code?: string; items?: string[] }>) ?? [];
+  interface LessonItem {
+    type: string;
+    content?: string;
+    text?: string;
+    code?: string;
+    items?: string[];
+  }
+  const blocks = (content.blocks as LessonItem[]) ?? [];
+  const sections = (content.sections as LessonItem[]) ?? [];
 
-  if (sections.length === 0) {
-    // Fallback: render raw JSON nicely
+  const itemsToRender = blocks.length > 0 ? blocks : sections;
+
+  if (itemsToRender.length === 0) {
     return (
       <div className="prose prose-invert max-w-none">
         <pre className="bg-bg-elevated rounded-lg p-4 text-sm overflow-x-auto text-text-secondary">
@@ -34,35 +44,41 @@ function LessonContentRenderer({ content }: { content: Record<string, unknown> }
 
   return (
     <div className="space-y-6">
-      {sections.map((section, idx) => {
-        switch (section.type) {
+      {itemsToRender.map((item, idx) => {
+        const type = item.type;
+        const text = item.content ?? item.text;
+        const code = item.content ?? item.code;
+
+        switch (type) {
           case "text":
+          case "paragraph":
             return (
-              <p key={idx} className="text-text-secondary leading-relaxed">
-                {section.text}
+              <p key={idx} className="text-text-secondary leading-relaxed text-base">
+                {text}
               </p>
             );
           case "code":
             return (
               <pre key={idx} className="bg-bg-elevated border border-border rounded-xl p-4 text-sm font-mono text-accent-green overflow-x-auto">
-                {section.code}
+                {code}
               </pre>
             );
           case "list":
             return (
               <ul key={idx} className="space-y-2">
-                {(section.items ?? []).map((item, i) => (
+                {(item.items ?? []).map((listVal, i) => (
                   <li key={i} className="flex items-start gap-2 text-text-secondary">
                     <span className="text-brand-cyan mt-1 shrink-0">•</span>
-                    {item}
+                    {listVal}
                   </li>
                 ))}
               </ul>
             );
+          case "header":
           case "heading":
             return (
-              <h3 key={idx} className="text-lg font-heading font-semibold text-white">
-                {section.text}
+              <h3 key={idx} className="text-xl font-heading font-semibold text-white mt-4 first:mt-0">
+                {text}
               </h3>
             );
           default:
@@ -81,10 +97,17 @@ export default function LessonPage() {
   const [completing, setCompleting] = useState(false);
   const [completed, setCompleted] = useState(false);
 
+  // Timer states for enforcing reading behavior
+  const [canComplete, setCanComplete] = useState(false);
+  const [secondsRemaining, setSecondsRemaining] = useState(10);
+
   useEffect(() => {
     if (!slug || !id) return;
     apiFetch<LessonDetail>(`/worlds/${slug}/lessons/${id}`)
-      .then((res) => setLesson(res.data))
+      .then((res) => {
+        setLesson(res.data);
+        setCompleted(res.data.completed || false);
+      })
       .catch((err) => {
         if (err instanceof ApiError && err.status === 403) {
           toast.error("Lesson locked. Complete prerequisites first.");
@@ -94,8 +117,28 @@ export default function LessonPage() {
       .finally(() => setLoading(false));
   }, [slug, id, router]);
 
+  // Enforce reading timer when lesson is loaded (only if not already completed)
+  useEffect(() => {
+    if (!lesson || completed) return;
+    setCanComplete(false);
+    setSecondsRemaining(10);
+ 
+    const timer = setInterval(() => {
+      setSecondsRemaining((prev) => {
+        if (prev <= 1) {
+          clearInterval(timer);
+          setCanComplete(true);
+          return 0;
+        }
+        return prev - 1;
+      });
+    }, 1000);
+ 
+    return () => clearInterval(timer);
+  }, [lesson, completed]);
+
   const handleComplete = async () => {
-    if (!slug || !id) return;
+    if (!slug || !id || !canComplete) return;
     setCompleting(true);
     try {
       await apiFetch(`/worlds/${slug}/lessons/${id}/complete`, { method: "POST" });
@@ -172,18 +215,24 @@ export default function LessonPage() {
         {/* Complete button */}
         <div className="flex justify-end">
           {completed ? (
-            <div className="flex items-center gap-2 text-accent-green font-medium">
-              <CheckCircle className="w-5 h-5" />
-              Lesson Complete!
-            </div>
+            <Link
+              href={`/worlds/${slug}`}
+              className="flex items-center gap-2 px-6 py-3 bg-brand-cyan text-bg-primary font-semibold rounded-xl hover:bg-brand-cyan/90 transition-colors"
+            >
+              Back to World
+            </Link>
           ) : (
             <button
               onClick={() => void handleComplete()}
-              disabled={completing}
-              className="flex items-center gap-2 px-6 py-3 bg-brand-cyan text-bg-primary font-semibold rounded-xl hover:bg-brand-cyan/90 transition-colors disabled:opacity-50"
+              disabled={completing || !canComplete}
+              className="flex items-center gap-2 px-6 py-3 bg-brand-cyan text-bg-primary font-semibold rounded-xl hover:bg-brand-cyan/90 transition-colors disabled:opacity-50 disabled:cursor-not-allowed"
             >
               <CheckCircle className="w-4 h-4" />
-              {completing ? "Marking complete..." : "Mark as Complete (+25 XP)"}
+              {completing
+                ? "Marking complete..."
+                : canComplete
+                ? "Mark as Complete (+25 XP)"
+                : `Read for ${secondsRemaining}s to complete`}
             </button>
           )}
         </div>

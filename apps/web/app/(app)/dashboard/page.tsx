@@ -13,6 +13,8 @@ import {
   Lock,
   CheckCircle2,
   Circle,
+  Brain,
+  Dna
 } from "lucide-react";
 import { apiFetch } from "@/lib/api";
 
@@ -47,14 +49,40 @@ interface WorldProgress {
 interface RoadmapStep {
   topic_id: string;
   title: string;
-  status: string;
+  status: "locked" | "unlocked" | "in_progress" | "completed";
   estimated_days: number;
   mastery_required: number;
 }
 
 interface Roadmap {
+  goal: string;
   steps: RoadmapStep[];
-  current_step_index: number;
+  currentStepIndex: number;
+}
+
+interface Recommendation {
+  id: string;
+  type: string;
+  title: string;
+  description: string;
+  why: string;
+  impact: string;
+  effort_minutes: number;
+  confidence: number;
+  action_url: string;
+}
+
+interface SkillDna {
+  status: "computed" | "insufficient_data";
+  available_in_days?: number;
+  dna?: {
+    learning_style: string;
+    consistency_pattern: string;
+    exploration_behavior: string;
+    strengths: string[];
+    weaknesses: string[];
+    growth_opportunities: string[];
+  };
 }
 
 // ──────────────────────────────────────────────
@@ -124,13 +152,13 @@ function XpLevelWidget({ dlt }: { dlt: DltState | null }) {
 
       <div className="grid grid-cols-2 gap-3">
         <div className="bg-bg-elevated rounded-lg p-3">
-          <p className="text-xs text-text-muted mb-0.5">Mastery</p>
+          <p className="text-[10px] text-text-muted uppercase font-semibold mb-0.5">Overall Mastery</p>
           <p className="text-lg font-mono font-bold text-accent-green">
             {Math.round((dlt?.overall_mastery ?? 0) * 100)}%
           </p>
         </div>
         <div className="bg-bg-elevated rounded-lg p-3">
-          <p className="text-xs text-text-muted mb-0.5">Retention</p>
+          <p className="text-[10px] text-text-muted uppercase font-semibold mb-0.5">Overall Retention</p>
           <p className="text-lg font-mono font-bold text-brand-cyan">
             {Math.round((dlt?.overall_retention ?? 0) * 100)}%
           </p>
@@ -162,11 +190,11 @@ function StreakWidget({ streak }: { streak: number }) {
         <span className="text-text-secondary text-sm font-medium">Daily Streak</span>
       </div>
 
-      <div className="text-center py-2">
-        <div className="text-6xl mb-1">🔥</div>
-        <p className="text-5xl font-heading font-bold text-white">{streak}</p>
-        <p className="text-text-secondary text-sm mt-1">
-          {streak === 1 ? "day" : "days"} in a row
+      <div className="text-center py-1">
+        <div className="text-5xl mb-1">🔥</div>
+        <p className="text-4xl font-heading font-bold text-white">{streak}</p>
+        <p className="text-text-secondary text-xs mt-1">
+          {streak === 1 ? "day active" : "days in a row"}
         </p>
       </div>
 
@@ -187,6 +215,73 @@ function StreakWidget({ streak }: { streak: number }) {
 }
 
 // ──────────────────────────────────────────────
+// Widget: Memory Snapshot (mini retention gauge)
+// ──────────────────────────────────────────────
+function MemorySnapshotWidget({ dlt }: { dlt: DltState | null }) {
+  const retention = dlt?.overall_retention ?? 0;
+  const color =
+    retention >= 0.8
+      ? "text-accent-green"
+      : retention >= 0.6
+      ? "text-accent-orange"
+      : "text-accent-red";
+
+  return (
+    <motion.div
+      initial={{ opacity: 0, y: 20 }}
+      animate={{ opacity: 1, y: 0 }}
+      transition={{ delay: 0.3 }}
+      className="bg-bg-secondary border border-border rounded-xl p-6 flex flex-col justify-between gap-4"
+    >
+      <div className="flex items-center gap-2">
+        <div className="w-8 h-8 rounded-lg bg-brand-cyan/20 border border-brand-cyan/30 flex items-center justify-center">
+          <Brain className="w-4 h-4 text-brand-cyan" />
+        </div>
+        <span className="text-text-secondary text-sm font-medium">Memory Snapshot</span>
+      </div>
+
+      <div className="flex items-center gap-6 py-2">
+        <div className="relative w-20 h-20 flex items-center justify-center shrink-0">
+          <svg className="w-full h-full transform -rotate-90">
+            <circle cx="40" cy="40" r="32" className="stroke-bg-elevated fill-none" strokeWidth="6" />
+            <circle
+              cx="40"
+              cy="40"
+              r="32"
+              className={`fill-none ${
+                retention >= 0.8
+                  ? "stroke-accent-green"
+                  : retention >= 0.6
+                  ? "stroke-accent-orange"
+                  : "stroke-accent-red"
+              }`}
+              strokeWidth="6"
+              strokeDasharray={201}
+              strokeDashoffset={201 - (201 * retention)}
+            />
+          </svg>
+          <span className="absolute text-base font-bold text-white font-mono">
+            {Math.round(retention * 100)}%
+          </span>
+        </div>
+        <div>
+          <p className={`text-sm font-bold ${color}`}>
+            {retention >= 0.8 ? "Healthy" : retention >= 0.6 ? "Warning" : "Critical Decay"}
+          </p>
+          <p className="text-xs text-text-muted mt-1 leading-normal">
+            Spaced repetition logs predict you need reviews shortly to avoid knowledge decay.
+          </p>
+        </div>
+      </div>
+
+      <a href="/memory" className="text-xs text-brand-cyan hover:underline flex items-center gap-1 mt-1">
+        Open Memory Lab <ChevronRight className="w-3 h-3" />
+      </a>
+    </motion.div>
+  );
+}
+
+// ──────────────────────────────────────────────
 // Widget: World Progress
 // ──────────────────────────────────────────────
 function WorldProgressWidget({ worlds }: { worlds: WorldProgress[] }) {
@@ -202,10 +297,10 @@ function WorldProgressWidget({ worlds }: { worlds: WorldProgress[] }) {
           <div className="w-8 h-8 rounded-lg bg-brand-cyan/20 border border-brand-cyan/30 flex items-center justify-center">
             <Globe2 className="w-4 h-4 text-brand-cyan" />
           </div>
-          <span className="text-text-secondary text-sm font-medium">World Progress</span>
+          <span className="text-text-secondary text-sm font-medium">World Unlock Status</span>
         </div>
         <a href="/worlds" className="text-xs text-brand-cyan hover:underline flex items-center gap-1">
-          View all <ChevronRight className="w-3 h-3" />
+          Explore <ChevronRight className="w-3 h-3" />
         </a>
       </div>
 
@@ -218,23 +313,22 @@ function WorldProgressWidget({ worlds }: { worlds: WorldProgress[] }) {
               <WorldStatusIcon status={world.progress.status} />
               <div className="flex-1 min-w-0">
                 <p className="text-sm font-medium text-white truncate">{world.name}</p>
-                <p className="text-xs text-text-muted">
-                  {world.progress.lessons_completed}/{world.lesson_count} lessons •{" "}
-                  {world.progress.xp_earned} XP
+                <p className="text-[10px] text-text-muted uppercase font-semibold mt-0.5">
+                  Order Index: {world.order_index}
                 </p>
               </div>
               <span
-                className={`text-xs px-2 py-0.5 rounded-full font-medium ${
+                className={`text-[10px] px-2 py-0.5 rounded font-bold uppercase ${
                   world.progress.status === "completed"
                     ? "bg-accent-green/20 text-accent-green"
                     : world.progress.status === "in_progress"
                     ? "bg-brand-cyan/20 text-brand-cyan"
+                    : world.progress.status === "unlocked"
+                    ? "bg-accent-purple/20 text-accent-purple"
                     : "bg-bg-elevated text-text-muted border border-border"
                 }`}
               >
-                {world.progress.status === "in_progress"
-                  ? "Active"
-                  : world.progress.status.charAt(0).toUpperCase() + world.progress.status.slice(1)}
+                {world.progress.status}
               </span>
             </div>
           ))
@@ -254,15 +348,15 @@ function RoadmapWidget({ roadmap }: { roadmap: Roadmap | null }) {
         initial={{ opacity: 0, y: 20 }}
         animate={{ opacity: 1, y: 0 }}
         transition={{ delay: 0.4 }}
-        className="bg-bg-secondary border border-border rounded-xl p-6 flex items-center justify-center"
+        className="bg-bg-secondary border border-border rounded-xl p-6 flex items-center justify-center min-h-[200px]"
       >
-        <p className="text-text-muted text-sm">Complete onboarding to see your roadmap.</p>
+        <p className="text-text-muted text-sm text-center">Complete onboarding to see your roadmap timeline.</p>
       </motion.div>
     );
   }
 
-  const steps = roadmap.steps as RoadmapStep[];
-  const currentIdx = roadmap.current_step_index ?? 0;
+  const steps = roadmap.steps || [];
+  const currentIdx = roadmap.currentStepIndex ?? 0;
 
   return (
     <motion.div
@@ -271,55 +365,152 @@ function RoadmapWidget({ roadmap }: { roadmap: Roadmap | null }) {
       transition={{ delay: 0.4 }}
       className="bg-bg-secondary border border-border rounded-xl p-6 flex flex-col gap-4"
     >
-      <div className="flex items-center gap-2">
-        <div className="w-8 h-8 rounded-lg bg-accent-green/20 border border-accent-green/30 flex items-center justify-center">
-          <TrendingUp className="w-4 h-4 text-accent-green" />
+      <div className="flex items-center justify-between">
+        <div className="flex items-center gap-2">
+          <div className="w-8 h-8 rounded-lg bg-accent-green/20 border border-accent-green/30 flex items-center justify-center">
+            <TrendingUp className="w-4 h-4 text-accent-green" />
+          </div>
+          <span className="text-text-secondary text-sm font-medium">Roadmap Steps</span>
         </div>
-        <span className="text-text-secondary text-sm font-medium">Roadmap Preview</span>
+        <a href="/roadmap" className="text-xs text-brand-cyan hover:underline flex items-center gap-1">
+          Full Roadmap <ChevronRight className="w-3 h-3" />
+        </a>
       </div>
 
-      <div className="space-y-2">
-        {steps.slice(0, 4).map((step, idx) => (
-          <div key={step.topic_id} className="flex items-center gap-3">
-            <div
-              className={`w-6 h-6 rounded-full flex items-center justify-center text-xs font-bold shrink-0 ${
-                idx < currentIdx
-                  ? "bg-accent-green text-bg-primary"
-                  : idx === currentIdx
-                  ? "bg-brand-cyan text-bg-primary"
-                  : "bg-bg-elevated text-text-muted border border-border"
-              }`}
-            >
-              {idx < currentIdx ? "✓" : idx + 1}
-            </div>
-            <div className="flex-1 min-w-0">
-              <p
-                className={`text-sm truncate ${
-                  idx === currentIdx ? "text-white font-medium" : "text-text-secondary"
+      <div className="space-y-3">
+        {steps.slice(Math.max(0, currentIdx - 1), currentIdx + 3).map((step) => {
+          const globalIdx = steps.indexOf(step);
+          const isCompleted = step.status === "completed";
+          const isInProgress = step.status === "in_progress";
+
+          return (
+            <div key={step.topic_id} className="flex items-center gap-3">
+              <div
+                className={`w-6 h-6 rounded-full flex items-center justify-center text-xs font-bold shrink-0 ${
+                  isCompleted
+                    ? "bg-accent-green text-bg-primary"
+                    : isInProgress
+                    ? "bg-brand-cyan text-bg-primary animate-pulse"
+                    : "bg-bg-elevated text-text-muted border border-border"
                 }`}
               >
-                {step.title}
-              </p>
+                {isCompleted ? "✓" : globalIdx + 1}
+              </div>
+              <div className="flex-1 min-w-0">
+                <p
+                  className={`text-sm truncate ${
+                    isInProgress ? "text-white font-medium" : "text-text-secondary"
+                  }`}
+                >
+                  {step.title}
+                </p>
+              </div>
+              <span className="text-[10px] text-text-muted font-mono">{step.estimated_days}d</span>
             </div>
-            <span className="text-xs text-text-muted shrink-0">{step.estimated_days}d</span>
-          </div>
-        ))}
+          );
+        })}
       </div>
     </motion.div>
   );
 }
 
 // ──────────────────────────────────────────────
-// Widget: Recommendations
+// Widget: Skill DNA Snapshot
 // ──────────────────────────────────────────────
-function RecommendationsWidget() {
-  // Placeholder recommendations for Phase 2 (full engine in Phase 3)
-  const recs = [
-    { id: "1", title: "Practice Arrays", why: "Mastery below 60%", impact: "high", effort_minutes: 20 },
-    { id: "2", title: "Review Variables", why: "Retention dropping", impact: "medium", effort_minutes: 15 },
-    { id: "3", title: "Complete Loop Forest boss", why: "Unlock next world", impact: "high", effort_minutes: 30 },
-  ];
+function DnaSnapshotWidget({ dnaData }: { dnaData: SkillDna | null }) {
+  if (!dnaData || dnaData.status === "insufficient_data") {
+    const days = dnaData?.available_in_days ?? 7;
+    return (
+      <motion.div
+        initial={{ opacity: 0, y: 20 }}
+        animate={{ opacity: 1, y: 0 }}
+        transition={{ delay: 0.4 }}
+        className="bg-bg-secondary border border-border rounded-xl p-6 flex flex-col justify-between gap-4"
+      >
+        <div className="flex items-center gap-2">
+          <div className="w-8 h-8 rounded-lg bg-accent-purple/20 border border-accent-purple/30 flex items-center justify-center">
+            <Dna className="w-4 h-4 text-accent-purple" />
+          </div>
+          <span className="text-text-secondary text-sm font-medium">Skill DNA Profile</span>
+        </div>
+        <div className="text-center py-2">
+          <p className="text-sm font-semibold text-white">DNA Profile Computing...</p>
+          <p className="text-xs text-text-muted mt-2">
+            Skill DNA requires at least 7 days of activity. Available in {days} {days === 1 ? "day" : "days"}.
+          </p>
+        </div>
+        <div className="w-full bg-bg-elevated rounded-full h-1.5">
+          <div
+            className="bg-accent-purple h-1.5 rounded-full"
+            style={{ width: `${((7 - days) / 7) * 100}%` }}
+          />
+        </div>
+      </motion.div>
+    );
+  }
 
+  const dna = dnaData.dna;
+
+  return (
+    <motion.div
+      initial={{ opacity: 0, y: 20 }}
+      animate={{ opacity: 1, y: 0 }}
+      transition={{ delay: 0.4 }}
+      className="bg-bg-secondary border border-border rounded-xl p-6 flex flex-col gap-4"
+    >
+      <div className="flex items-center justify-between">
+        <div className="flex items-center gap-2">
+          <div className="w-8 h-8 rounded-lg bg-accent-purple/20 border border-accent-purple/30 flex items-center justify-center">
+            <Dna className="w-4 h-4 text-accent-purple" />
+          </div>
+          <span className="text-text-secondary text-sm font-medium">Skill DNA</span>
+        </div>
+        <span className="text-[10px] px-2 py-0.5 bg-accent-purple/20 border border-accent-purple/30 text-accent-purple rounded font-bold uppercase">
+          {dna?.learning_style}
+        </span>
+      </div>
+
+      <div className="space-y-3">
+        {/* Strengths */}
+        <div>
+          <span className="text-[10px] text-accent-green uppercase font-bold tracking-wider">Strengths</span>
+          <div className="flex flex-wrap gap-1.5 mt-1.5">
+            {dna?.strengths.length === 0 ? (
+              <span className="text-xs text-text-muted">None computed yet</span>
+            ) : (
+              dna?.strengths.slice(0, 3).map((s) => (
+                <span key={s} className="text-xs px-2 py-0.5 bg-bg-elevated border border-border text-white rounded font-mono capitalize">
+                  {s}
+                </span>
+              ))
+            )}
+          </div>
+        </div>
+
+        {/* Weaknesses */}
+        <div>
+          <span className="text-[10px] text-accent-red uppercase font-bold tracking-wider">Weaknesses</span>
+          <div className="flex flex-wrap gap-1.5 mt-1.5">
+            {dna?.weaknesses.length === 0 ? (
+              <span className="text-xs text-text-muted font-sans font-normal">None computed yet</span>
+            ) : (
+              dna?.weaknesses.slice(0, 3).map((w) => (
+                <span key={w} className="text-xs px-2 py-0.5 bg-bg-elevated border border-border text-white rounded font-mono capitalize">
+                  {w}
+                </span>
+              ))
+            )}
+          </div>
+        </div>
+      </div>
+    </motion.div>
+  );
+}
+
+// ──────────────────────────────────────────────
+// Widget: Recommendations Feed
+// ──────────────────────────────────────────────
+function RecommendationsWidget({ recs }: { recs: Recommendation[] }) {
   return (
     <motion.div
       initial={{ opacity: 0, y: 20 }}
@@ -327,41 +518,73 @@ function RecommendationsWidget() {
       transition={{ delay: 0.5 }}
       className="bg-bg-secondary border border-border rounded-xl p-6 flex flex-col gap-4"
     >
-      <div className="flex items-center gap-2">
-        <div className="w-8 h-8 rounded-lg bg-accent-purple/20 border border-accent-purple/30 flex items-center justify-center">
-          <Award className="w-4 h-4 text-accent-purple" />
+      <div className="flex items-center justify-between">
+        <div className="flex items-center gap-2">
+          <div className="w-8 h-8 rounded-lg bg-accent-purple/20 border border-accent-purple/30 flex items-center justify-center">
+            <Award className="w-4 h-4 text-accent-purple" />
+          </div>
+          <span className="text-text-secondary text-sm font-medium">Personalized Recommendations</span>
         </div>
-        <span className="text-text-secondary text-sm font-medium">Recommendations</span>
       </div>
 
-      <div className="space-y-2.5">
-        {recs.map((rec) => (
-          <div key={rec.id} className="p-3 bg-bg-elevated rounded-lg border border-border hover:border-brand-cyan/30 transition-colors cursor-pointer group">
-            <div className="flex items-start justify-between gap-2">
-              <div className="flex-1 min-w-0">
-                <p className="text-sm font-medium text-white group-hover:text-brand-cyan transition-colors truncate">
+      <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
+        {recs.length === 0 ? (
+          <p className="col-span-full text-text-muted text-sm text-center py-6">
+            All caught up! Recomputations will trigger recommendations shortly.
+          </p>
+        ) : (
+          recs.map((rec) => (
+            <div
+              key={rec.id}
+              className="p-4 bg-bg-elevated rounded-xl border border-border hover:border-brand-cyan/20 transition-all flex flex-col justify-between gap-4 group"
+            >
+              <div>
+                <div className="flex items-start justify-between gap-2 mb-1">
+                  <span
+                    className={`text-[9px] px-1.5 py-0.5 rounded font-bold uppercase tracking-wider ${
+                      rec.type === "review"
+                        ? "bg-accent-red/20 text-accent-red"
+                        : rec.type === "learn"
+                        ? "bg-accent-green/20 text-accent-green"
+                        : "bg-brand-cyan/20 text-brand-cyan"
+                    }`}
+                  >
+                    {rec.type}
+                  </span>
+                  <span
+                    className={`text-[9px] font-bold uppercase font-mono ${
+                      rec.impact === "high" ? "text-accent-orange" : "text-text-secondary"
+                    }`}
+                  >
+                    {rec.impact} impact
+                  </span>
+                </div>
+                <h4 className="text-sm font-bold text-white group-hover:text-brand-cyan transition-colors truncate">
                   {rec.title}
+                </h4>
+                <p className="text-xs text-text-secondary mt-1.5 line-clamp-2 leading-relaxed">
+                  {rec.description}
                 </p>
-                <p className="text-xs text-text-muted mt-0.5">{rec.why}</p>
               </div>
-              <div className="flex items-center gap-1.5 shrink-0">
-                <span
-                  className={`text-xs px-1.5 py-0.5 rounded font-medium ${
-                    rec.impact === "high"
-                      ? "bg-accent-orange/20 text-accent-orange"
-                      : "bg-brand-cyan/20 text-brand-cyan"
-                  }`}
-                >
-                  {rec.impact}
-                </span>
+
+              <div className="flex items-center justify-between border-t border-border/40 pt-3 mt-1">
+                <div className="flex items-center gap-1.5 text-text-muted">
+                  <BookOpen className="w-3.5 h-3.5" />
+                  <span className="text-[10px] font-mono font-medium">{rec.effort_minutes} min</span>
+                </div>
+                {rec.action_url && (
+                  <a
+                    href={rec.action_url}
+                    className="text-xs font-bold text-brand-cyan hover:underline flex items-center gap-1 group/btn"
+                  >
+                    Go
+                    <ChevronRight className="w-3 h-3 transition-transform group-hover/btn:translate-x-0.5" />
+                  </a>
+                )}
               </div>
             </div>
-            <div className="flex items-center gap-1 mt-1.5">
-              <BookOpen className="w-3 h-3 text-text-muted" />
-              <span className="text-xs text-text-muted">{rec.effort_minutes} min</span>
-            </div>
-          </div>
-        ))}
+          ))
+        )}
       </div>
     </motion.div>
   );
@@ -374,23 +597,27 @@ export default function DashboardPage() {
   const [dlt, setDlt] = useState<DltState | null>(null);
   const [worlds, setWorlds] = useState<WorldProgress[]>([]);
   const [roadmap, setRoadmap] = useState<Roadmap | null>(null);
+  const [recs, setRecs] = useState<Recommendation[]>([]);
+  const [dna, setDna] = useState<SkillDna | null>(null);
   const [loading, setLoading] = useState(true);
 
   const fetchDashboard = useCallback(async () => {
     try {
-      const [dltRes, worldsRes] = await Promise.all([
+      const [dltRes, worldsRes, roadmapRes, recsRes, dnaRes] = await Promise.all([
         apiFetch<DltState>("/dlt/me").catch(() => null),
         apiFetch<WorldProgress[]>("/worlds").catch(() => null),
+        apiFetch<Roadmap>("/roadmap").catch(() => null),
+        apiFetch<{ recommendations: Recommendation[] }>("/recommendations").catch(() => null),
+        apiFetch<SkillDna>("/skill-dna").catch(() => null),
       ]);
 
       if (dltRes) setDlt(dltRes.data);
       if (worldsRes) setWorlds(worldsRes.data);
-
-      // Try roadmap (requires completed onboarding)
-      const roadmapRes = await apiFetch<{ steps: RoadmapStep[]; current_step_index: number }>("/users/me/roadmap").catch(() => null);
       if (roadmapRes) setRoadmap(roadmapRes.data);
-    } catch {
-      // Silent fail — widgets show defaults
+      if (recsRes) setRecs(recsRes.data.recommendations);
+      if (dnaRes) setDna(dnaRes.data);
+    } catch (error) {
+      console.error("Dashboard error:", error);
     } finally {
       setLoading(false);
     }
@@ -398,9 +625,6 @@ export default function DashboardPage() {
 
   useEffect(() => {
     void fetchDashboard();
-
-    // Socket.io listener for real-time dlt_updated events
-    // (Socket provider at layout level would do this — placeholder for wiring)
   }, [fetchDashboard]);
 
   if (loading) {
@@ -426,24 +650,28 @@ export default function DashboardPage() {
         animate={{ opacity: 1, y: 0 }}
         className="mb-8"
       >
-        <h1 className="text-3xl font-heading font-bold text-white mb-1">Dashboard</h1>
+        <h1 className="text-3xl font-heading font-bold text-white mb-1">Learning Dashboard</h1>
         <p className="text-text-secondary text-sm">
-          Your learning overview — keep going, you&apos;re doing great!
+          Welcome back! Your daily intelligence roadmap and spaced repetition memory alerts.
         </p>
       </motion.div>
 
-      {/* 5-widget grid */}
-      <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
-        {/* Row 1: XP + Level, Streak, World Progress */}
-        <XpLevelWidget dlt={dlt} />
-        <StreakWidget streak={dlt?.streak_count ?? 0} />
-        <WorldProgressWidget worlds={worlds} />
+      {/* Grid Layout */}
+      <div className="space-y-6">
+        <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
+          {/* Row 1: XP + Level, Streak, Memory Snapshot */}
+          <XpLevelWidget dlt={dlt} />
+          <StreakWidget streak={dlt?.streak_count ?? 0} />
+          <MemorySnapshotWidget dlt={dlt} />
 
-        {/* Row 2: Roadmap Preview + Recommendations */}
-        <RoadmapWidget roadmap={roadmap} />
-        <div className="lg:col-span-2">
-          <RecommendationsWidget />
+          {/* Row 2: Roadmap, Skill DNA, World Progress */}
+          <RoadmapWidget roadmap={roadmap} />
+          <DnaSnapshotWidget dnaData={dna} />
+          <WorldProgressWidget worlds={worlds} />
         </div>
+
+        {/* Row 3: Recommendations Feed (spanning full width) */}
+        <RecommendationsWidget recs={recs} />
       </div>
     </div>
   );

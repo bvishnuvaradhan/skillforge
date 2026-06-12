@@ -87,8 +87,6 @@ export default function WorldDetailPage() {
   const router = useRouter();
   const [world, setWorld] = useState<WorldDetail | null>(null);
   const [loading, setLoading] = useState(true);
-  const [completingLesson, setCompletingLesson] = useState<string | null>(null);
-
   useEffect(() => {
     if (!slug) return;
     apiFetch<WorldDetail>(`/worlds/${slug}`)
@@ -101,22 +99,6 @@ export default function WorldDetailPage() {
       })
       .finally(() => setLoading(false));
   }, [slug, router]);
-
-  const handleCompleteLesson = async (lessonId: string) => {
-    if (!slug) return;
-    setCompletingLesson(lessonId);
-    try {
-      await apiFetch(`/worlds/${slug}/lessons/${lessonId}/complete`, { method: "POST" });
-      toast.success("Lesson completed! +25 XP earned 🎉");
-      // Refresh world data
-      const res = await apiFetch<WorldDetail>(`/worlds/${slug}`);
-      setWorld(res.data);
-    } catch {
-      toast.error("Failed to mark lesson complete");
-    } finally {
-      setCompletingLesson(null);
-    }
-  };
 
   if (loading) {
     return (
@@ -244,15 +226,6 @@ export default function WorldDetailPage() {
                 </div>
 
                 <div className="flex items-center gap-2 shrink-0">
-                  {isCurrent && (
-                    <button
-                      onClick={() => void handleCompleteLesson(lesson.id)}
-                      disabled={completingLesson === lesson.id}
-                      className="text-xs bg-brand-cyan text-bg-primary px-3 py-1.5 rounded-lg font-medium hover:bg-brand-cyan/90 transition-colors disabled:opacity-50"
-                    >
-                      {completingLesson === lesson.id ? "Saving..." : "Complete"}
-                    </button>
-                  )}
                   <Link
                     href={`/worlds/${slug}/lesson/${lesson.id}`}
                     className="text-xs text-brand-cyan hover:underline flex items-center gap-0.5"

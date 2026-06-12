@@ -10,6 +10,7 @@
   },
   "dependencies": {
     "@hookform/resolvers": "^5.4.0",
+    "@monaco-editor/react": "^4.7.0",
     "@skillforge/types": "*",
     "@tanstack/react-query": "^5.101.0",
     "clsx": "^2.1.1",

@@ -1,5 +1,5 @@
 import { Injectable, BadRequestException } from '@nestjs/common';
-import { prisma, Goal, LearningStyle } from '@skillforge/db';
+import { prisma, Goal, LearningStyle, LanguageTrack } from '@skillforge/db';
 import { SetGoalDto, SubmitAssessmentDto } from './onboarding.dto';
 import { ASSESSMENT_QUESTIONS } from '@skillforge/types';
 
@@ -11,7 +11,10 @@ export class OnboardingService {
   async setGoal(userId: string, dto: SetGoalDto) {
     await prisma.user.update({
       where: { id: userId },
-      data: { primaryGoal: dto.goal as Goal },
+      data: {
+        primaryGoal: dto.goal as Goal,
+        languageTrack: (dto.language_track || 'JAVASCRIPT') as LanguageTrack,
+      },
     });
 
     return {
@@ -229,14 +232,74 @@ export class OnboardingService {
       });
     }
 
+    const worldsUnlocked = await this.fastTrackUnlock(userId);
+
     return {
       dlt: {
         overall_mastery: dltState.overallMastery,
-        worlds_unlocked: ['variables-kingdom'],
+        worlds_unlocked: worldsUnlocked,
       },
       roadmap: {
         steps: roadmap.steps,
       },
     };
+  }
+
+  async fastTrackUnlock(userId: string): Promise<string[]> {
+    const unlockedWorlds = ['variables-kingdom'];
+
+    // 1. Check assessment score
+    const assessment = await prisma.examAttempt.findFirst({
+      where: { userId, examType: 'ONBOARDING_ASSESSMENT' },
+      orderBy: { submittedAt: 'desc' },
+    });
+
+    const scoreRatio = assessment && assessment.maxScore && assessment.maxScore > 0
+      ? (assessment.score ?? 0) / assessment.maxScore
+      : 0;
+
+    // 2. Check coding profiles
+    const profiles = await prisma.codingProfile.findMany({
+      where: { userId },
+    });
+    const totalSolved = profiles.reduce((sum, p) => sum + p.solvedCount, 0);
+    const maxRating = profiles.length > 0 ? Math.max(...profiles.map(p => p.rating ?? 0)) : 0;
+
+    let unlockUpToOrder = 1; // Default variables-kingdom
+    if (scoreRatio >= 0.9 || totalSolved >= 180 || maxRating >= 1800) {
+      unlockUpToOrder = 4; // Unlock up to array-arena
+    } else if (scoreRatio >= 0.75 || totalSolved >= 80 || maxRating >= 1500) {
+      unlockUpToOrder = 3; // Unlock up to loop-forest
+    }
+
+    // Fetch all worlds up to unlockUpToOrder
+    const worldsToUnlock = await prisma.world.findMany({
+      where: {
+        status: 'published',
+        orderIndex: { lte: unlockUpToOrder },
+      },
+      orderBy: { orderIndex: 'asc' },
+    });
+
+    for (const w of worldsToUnlock) {
+      if (!unlockedWorlds.includes(w.slug)) {
+        unlockedWorlds.push(w.slug);
+      }
+      
+      // Upsert progress entry
+      const existing = await prisma.userWorldProgress.findUnique({
+        where: { userId_worldId: { userId, worldId: w.id } }
+      });
+
+      if (!existing || existing.status === 'locked') {
+        await prisma.userWorldProgress.upsert({
+          where: { userId_worldId: { userId, worldId: w.id } },
+          update: { status: 'unlocked', unlockedAt: new Date() },
+          create: { userId, worldId: w.id, status: 'unlocked', unlockedAt: new Date() },
+        });
+      }
+    }
+
+    return unlockedWorlds;
   }
 }

@@ -3,6 +3,7 @@ import { Worker, Job, Queue, ConnectionOptions } from 'bullmq';
 import { prisma } from '@skillforge/db';
 import { EventsGateway } from '../common/events.gateway';
 import { RedisService } from '../auth/redis.service';
+import { RoadmapService } from '../roadmap/roadmap.service';
 
 export interface DltJobPayload {
   userId: string;
@@ -33,6 +34,7 @@ export class DltWorkerService implements OnModuleInit, OnModuleDestroy {
   constructor(
     private readonly eventsGateway: EventsGateway,
     private readonly redisService: RedisService,
+    private readonly roadmapService: RoadmapService,
   ) {}
 
   onModuleInit() {
@@ -67,8 +69,15 @@ export class DltWorkerService implements OnModuleInit, OnModuleDestroy {
   }
 
   async onModuleDestroy() {
-    await this.worker?.close();
-    await this.queue?.close();
+    try {
+      // Suppress ioredis 'Connection is closed' errors emitted during graceful shutdown
+      this.worker?.on('error', () => {});
+      this.queue?.on('error', () => {});
+      await this.worker?.close();
+      await this.queue?.close();
+    } catch {
+      // Ignore teardown errors (BullMQ ioredis socket close race)
+    }
   }
 
   /**
@@ -162,6 +171,19 @@ export class DltWorkerService implements OnModuleInit, OnModuleDestroy {
 
     // 5. Invalidate Redis cache
     await this.redisService.del(`dlt:${userId}`);
+
+    // 5.5 Regenerate roadmap based on updated DLT
+    try {
+      const user = await prisma.user.findUnique({
+        where: { id: userId },
+        select: { primaryGoal: true },
+      });
+      if (user && user.primaryGoal) {
+        await this.roadmapService.regenerateRoadmap(userId, user.primaryGoal);
+      }
+    } catch (err) {
+      this.logger.error(`Failed to regenerate roadmap for user ${userId}:`, err);
+    }
 
     // 6. Emit dlt_updated socket event
     this.eventsGateway.emitDltUpdated(userId, {

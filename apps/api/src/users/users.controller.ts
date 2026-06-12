@@ -2,7 +2,7 @@ import { Controller, Get, Patch, Delete, Post, Body, Req, Param, UseGuards, UseP
 import { Request } from 'express';
 import { UsersService } from './users.service';
 import { ZodValidationPipe } from '../auth/zod.pipe';
-import { updateProfileSchema, linkCodingProfileSchema, UpdateProfileDto, LinkCodingProfileDto } from './users.dto';
+import { updateProfileSchema, linkCodingProfileSchema, updateSettingsSchema, UpdateProfileDto, LinkCodingProfileDto, UpdateSettingsDto } from './users.dto';
 import { JwtAuthGuard } from '../auth/jwt-auth.guard';
 import { RolesGuard } from '../auth/roles.guard';
 import { Roles } from '../auth/roles.decorator';
@@ -37,6 +37,20 @@ export class UsersController {
     @Body() dto: UpdateProfileDto,
   ) {
     const result = await this.usersService.updateMe(req.user.id, dto);
+    return {
+      success: true,
+      data: result,
+    };
+  }
+
+  @Patch('me/settings')
+  @UseGuards(JwtAuthGuard)
+  @UsePipes(new ZodValidationPipe(updateSettingsSchema))
+  async updateSettings(
+    @Req() req: AuthenticatedRequest,
+    @Body() dto: UpdateSettingsDto,
+  ) {
+    const result = await this.usersService.updateSettings(req.user.id, dto);
     return {
       success: true,
       data: result,

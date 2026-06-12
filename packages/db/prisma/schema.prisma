@@ -107,6 +107,13 @@ enum AccessTier {
   premium
 }
 
+enum LanguageTrack {
+  CPP
+  JAVA
+  PYTHON
+  JAVASCRIPT
+}
+
 model User {
   id                 String          @id @default(uuid()) @db.Uuid
   email              String          @unique
@@ -118,12 +125,14 @@ model User {
   planExpiresAt      DateTime?       @map("plan_expires_at")
   primaryGoal        Goal?           @map("primary_goal")
   onboardingComplete Boolean         @default(false) @map("onboarding_complete")
+  languageTrack      LanguageTrack?  @map("language_track")
   streakCount        Int             @default(0) @map("streak_count")
   lastActiveAt       DateTime?       @map("last_active_at")
   privacySetting     PrivacySetting  @default(private) @map("privacy_setting")
   createdAt          DateTime        @default(now()) @map("created_at")
   updatedAt          DateTime        @default(now()) @updatedAt @map("updated_at")
   deletedAt          DateTime?       @map("deleted_at")
+  selectedModel      String?         @map("selected_model")
 
   oauthAccounts      OauthAccount[]
   sessions           Session[]
@@ -136,6 +145,11 @@ model User {
   gameAttempts       GameAttempt[]
   bossAttempts       BossAttempt[]
   userBadges         UserBadge[]
+  retentionScores    RetentionScore[]
+  recommendations    Recommendation[]
+  skillDna           SkillDna?
+  forecasts          Forecast[]
+  notifications      Notification[]
 
   @@index([role])
   @@map("users")
@@ -286,15 +300,16 @@ model World {
 }
 
 model Lesson {
-  id               String       @id @default(uuid()) @db.Uuid
-  worldId          String       @map("world_id") @db.Uuid
+  id               String        @id @default(uuid()) @db.Uuid
+  worldId          String        @map("world_id") @db.Uuid
   title            String
   content          Json
-  orderIndex       Int          @map("order_index")
-  estimatedMinutes Int          @default(10) @map("estimated_minutes")
-  topicTags        String[]     @map("topic_tags")
-  status           LessonStatus @default(draft)
-  createdAt        DateTime     @default(now()) @map("created_at")
+  orderIndex       Int           @map("order_index")
+  estimatedMinutes Int           @default(10) @map("estimated_minutes")
+  topicTags        String[]      @map("topic_tags")
+  status           LessonStatus  @default(draft)
+  languageTrack    LanguageTrack @default(JAVASCRIPT) @map("language_track")
+  createdAt        DateTime      @default(now()) @map("created_at")
 
   world            World        @relation(fields: [worldId], references: [id], onDelete: Cascade)
 
@@ -433,4 +448,156 @@ model UserBadge {
   @@index([userId])
   @@index([badgeId])
   @@map("user_badges")
+}
+
+enum RiskLevel {
+  low
+  medium
+  high
+  critical
+}
+
+enum RecommendationType {
+  learn
+  review
+  practice
+  reinforce
+  interview
+  career
+  consistency
+}
+
+enum RecommendationImpact {
+  low
+  medium
+  high
+}
+
+enum RecommendationStatus {
+  active
+  dismissed
+  snoozed
+  completed
+}
+
+enum ConsistencyPattern {
+  daily
+  bursty
+  irregular
+}
+
+enum ExplorationBehavior {
+  deep
+  broad
+  balanced
+}
+
+enum ForecastType {
+  topic_readiness
+  retention_risk
+  rating_growth
+  placement
+  interview
+}
+
+enum NotificationType {
+  memory
+  streak
+  interview
+  roadmap
+  inactivity
+  system
+  achievement
+}
+
+model RetentionScore {
+  id             String    @id @default(uuid()) @db.Uuid
+  userId         String    @map("user_id") @db.Uuid
+  topicId        String    @map("topic_id")
+  retention      Float     @default(1.0)
+  stability      Float     @default(1.0)
+  lastReviewedAt DateTime  @map("last_reviewed_at")
+  nextReviewAt   DateTime  @map("next_review_at")
+  reviewCount    Int       @default(0) @map("review_count")
+  riskLevel      RiskLevel @default(low) @map("risk_level")
+  updatedAt      DateTime  @default(now()) @updatedAt @map("updated_at")
+
+  user           User      @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@unique([userId, topicId])
+  @@index([userId])
+  @@index([nextReviewAt])
+  @@map("retention_scores")
+}
+
+model Recommendation {
+  id            String               @id @default(uuid()) @db.Uuid
+  userId        String               @map("user_id") @db.Uuid
+  type          RecommendationType
+  title         String
+  description   String
+  why           String
+  impact        RecommendationImpact
+  effortMinutes Int                  @map("effort_minutes")
+  confidence    Float
+  topicId       String?              @map("topic_id")
+  actionUrl     String?              @map("action_url")
+  status        RecommendationStatus @default(active)
+  snoozedUntil  DateTime?            @map("snoozed_until")
+  cooldownUntil DateTime?            @map("cooldown_until")
+  createdAt     DateTime             @default(now()) @map("created_at")
+  updatedAt     DateTime             @default(now()) @updatedAt @map("updated_at")
+
+  user          User                 @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@index([userId])
+  @@map("recommendations")
+}
+
+model SkillDna {
+  id                  String               @id @default(uuid()) @db.Uuid
+  userId              String               @unique @map("user_id") @db.Uuid
+  learningStyle       LearningStyle?       @map("learning_style")
+  consistencyPattern  ConsistencyPattern?  @map("consistency_pattern")
+  explorationBehavior ExplorationBehavior? @map("exploration_behavior")
+  strengths           String[]             @default([])
+  weaknesses          String[]             @default([])
+  growthOpportunities String[]             @default([]) @map("growth_opportunities")
+  computedAt          DateTime             @default(now()) @map("computed_at")
+
+  user                User                 @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@map("skill_dna")
+}
+
+model Forecast {
+  id               String       @id @default(uuid()) @db.Uuid
+  userId           String       @map("user_id") @db.Uuid
+  type             ForecastType
+  topicId          String?      @map("topic_id")
+  predictedValue   Float        @map("predicted_value")
+  predictedAtDate  DateTime     @map("predicted_at_date") @db.Date
+  confidence       Float
+  createdAt        DateTime     @default(now()) @map("created_at")
+
+  user             User         @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@index([userId])
+  @@map("forecasts")
+}
+
+model Notification {
+  id        String           @id @default(uuid()) @db.Uuid
+  userId    String           @map("user_id") @db.Uuid
+  type      NotificationType
+  title     String
+  body      String
+  actionUrl String?          @map("action_url")
+  isRead    Boolean          @default(false) @map("is_read")
+  createdAt DateTime         @default(now()) @map("created_at")
+
+  user      User             @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@index([userId])
+  @@map("notifications")
 }

@@ -3,6 +3,7 @@ import { NestExpressApplication } from '@nestjs/platform-express';
 import request from 'supertest';
 import { AppModule } from './../src/app.module';
 import { prisma, PrivacySetting, CodingPlatform } from '@skillforge/db';
+import { ProfileSyncService } from './../src/users/profile-sync.service';
 import cookieParser from 'cookie-parser';
 
 jest.setTimeout(30000);
@@ -270,6 +271,15 @@ describe('UsersController (e2e)', () => {
       expect(response.body.data.coding_profile.platform).toBe('leetcode');
       expect(response.body.data.coding_profile.username).toBe('student_leetcode_username');
       expect(response.body.data.coding_profile.solved_count).toBe(0);
+
+      // Force direct sync of profile synchronously to guarantee database is updated
+      const syncService = app.get(ProfileSyncService);
+      await syncService.syncProfile(studentId, 'leetcode', 'student_leetcode_username');
+
+      const dbProfile = await prisma.codingProfile.findFirst({
+        where: { userId: studentId, platform: CodingPlatform.leetcode },
+      });
+      expect(dbProfile?.solvedCount).toBeGreaterThan(0);
     });
 
     it('should return 409 Conflict if same platform is linked again', async () => {

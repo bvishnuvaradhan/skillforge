@@ -8,7 +8,7 @@ import { DltWorkerService } from '../dlt/dlt-worker.service';
 import { EventsGateway } from '../common/events.gateway';
 import { RedisService } from '../auth/redis.service';
 
-const BOSS_COOLDOWN_SECONDS = 60 * 60; // 1 hour cooldown between attempts
+const BOSS_COOLDOWN_SECONDS = 24 * 60 * 60; // 24 hours cooldown between attempts
 
 @Injectable()
 export class BossService {
@@ -36,7 +36,11 @@ export class BossService {
 
     // World access check
     const progress = boss.world.progressEntries[0];
-    if (!progress || progress.status === 'locked') {
+    const isUnlockedByDefault = !boss.world.unlockCriteria ||
+      Object.keys(boss.world.unlockCriteria as Record<string, any>).length === 0 ||
+      boss.world.orderIndex === 1;
+    const status = progress?.status ?? (isUnlockedByDefault ? 'unlocked' : 'locked');
+    if (status === 'locked') {
       throw new ForbiddenException({
         success: false,
         error: { code: 'WORLD_LOCKED', message: 'This world is locked.', details: {} },
@@ -46,6 +50,7 @@ export class BossService {
     // Check cooldown
     const cooldownKey = `boss_cooldown:${userId}:${bossId}`;
     const onCooldown = await this.redisService.exists(cooldownKey);
+    const cooldownRemaining = onCooldown ? await this.redisService.ttl(cooldownKey) : 0;
 
     return {
       id: boss.id,
@@ -67,6 +72,7 @@ export class BossService {
         image_url: boss.badge.imageUrl,
       } : null,
       on_cooldown: onCooldown,
+      cooldown_remaining_seconds: cooldownRemaining > 0 ? cooldownRemaining : 0,
     };
   }
 
@@ -80,12 +86,13 @@ export class BossService {
     const cooldownKey = `boss_cooldown:${userId}:${bossId}`;
     const onCooldown = await this.redisService.exists(cooldownKey);
     if (onCooldown) {
+      const remainingSeconds = await this.redisService.ttl(cooldownKey);
       throw new ForbiddenException({
         success: false,
         error: {
           code: 'BOSS_ON_COOLDOWN',
           message: 'You must wait before attempting this boss again.',
-          details: { retry_after_seconds: BOSS_COOLDOWN_SECONDS },
+          details: { retry_after_seconds: remainingSeconds > 0 ? remainingSeconds : BOSS_COOLDOWN_SECONDS },
         },
       });
     }
@@ -107,7 +114,11 @@ export class BossService {
 
     // World access check
     const progress = boss.world.progressEntries[0];
-    if (!progress || progress.status === 'locked') {
+    const isUnlockedByDefault = !boss.world.unlockCriteria ||
+      Object.keys(boss.world.unlockCriteria as Record<string, any>).length === 0 ||
+      boss.world.orderIndex === 1;
+    const status = progress?.status ?? (isUnlockedByDefault ? 'unlocked' : 'locked');
+    if (status === 'locked') {
       throw new ForbiddenException({
         success: false,
         error: { code: 'WORLD_LOCKED', message: 'This world is locked.', details: {} },
@@ -144,9 +155,26 @@ export class BossService {
       },
     });
 
-    // Set cooldown if failed
+    // Set progressive cooldown if failed, reset if passed
     if (!passed) {
-      await this.redisService.set(cooldownKey, '1', BOSS_COOLDOWN_SECONDS);
+      const failuresKey = `boss_failures:${userId}:${bossId}`;
+      const failuresVal = await this.redisService.get(failuresKey);
+      const count = (failuresVal ? parseInt(failuresVal, 10) : 0) + 1;
+
+      // Store failures count in Redis for 30 days
+      await this.redisService.set(failuresKey, count.toString(), 30 * 24 * 60 * 60);
+
+      let cooldownSeconds = 12 * 60 * 60; // 12 hours for Failure 4+
+      if (count === 1) cooldownSeconds = 2 * 60 * 60; // 2 hours
+      else if (count === 2) cooldownSeconds = 4 * 60 * 60; // 4 hours
+      else if (count === 3) cooldownSeconds = 8 * 60 * 60; // 8 hours
+
+      await this.redisService.set(cooldownKey, '1', cooldownSeconds);
+    } else {
+      // Victory: reset failures count and cooldown
+      const failuresKey = `boss_failures:${userId}:${bossId}`;
+      await this.redisService.del(failuresKey);
+      await this.redisService.del(cooldownKey);
     }
 
     let badgeEarned = null;

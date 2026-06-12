@@ -4,7 +4,10 @@ import { Schema } from 'zod';
 export class ZodValidationPipe implements PipeTransform {
   constructor(private schema: Schema) {}
 
-  transform(value: unknown, _metadata: ArgumentMetadata) {
+  transform(value: unknown, metadata: ArgumentMetadata) {
+    if (metadata.type !== 'body') {
+      return value;
+    }
     const result = this.schema.safeParse(value);
     if (!result.success) {
       const details: Record<string, string> = {};

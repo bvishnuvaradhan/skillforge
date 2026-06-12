@@ -1,9 +1,13 @@
 import { Injectable, NotFoundException, ForbiddenException, ConflictException, UnauthorizedException, BadRequestException } from '@nestjs/common';
 import { prisma, PrivacySetting, CodingPlatform, User } from '@skillforge/db';
-import { UpdateProfileDto, LinkCodingProfileDto } from './users.dto';
+import { UpdateProfileDto, LinkCodingProfileDto, UpdateSettingsDto } from './users.dto';
+import { ProfileSyncService } from './profile-sync.service';
 
 @Injectable()
 export class UsersService {
+  constructor(
+    private readonly profileSyncService: ProfileSyncService,
+  ) {}
   /**
    * Helper to format a User model into a safe user object without passwordHash
    */
@@ -49,6 +53,27 @@ export class UsersService {
     if (dto.avatarUrl !== undefined) updateData.avatarUrl = dto.avatarUrl;
     if (dto.privacySetting !== undefined) {
       updateData.privacySetting = dto.privacySetting as PrivacySetting;
+    }
+
+    const updatedUser = await prisma.user.update({
+      where: { id: userId },
+      data: updateData,
+    });
+
+    return {
+      user: this.formatSafeUser(updatedUser),
+    };
+  }
+
+  /**
+   * Update user settings (selected model, etc.)
+   */
+  async updateSettings(userId: string, dto: UpdateSettingsDto) {
+    await this.getMe(userId);
+
+    const updateData: Partial<User> = {};
+    if (dto.selectedModel !== undefined) {
+      updateData.selectedModel = dto.selectedModel;
     }
 
     const updatedUser = await prisma.user.update({
@@ -156,6 +181,8 @@ export class UsersService {
       },
     });
 
+    await this.profileSyncService.enqueueSync(userId, platform, dto.username);
+
     return {
       coding_profile: {
         id: codingProfile.id,
@@ -204,6 +231,8 @@ export class UsersService {
     await prisma.codingProfile.delete({
       where: { id: profile.id },
     });
+
+    await this.profileSyncService.recalculateMastery(userId);
 
     return {
       message: 'Profile unlinked',

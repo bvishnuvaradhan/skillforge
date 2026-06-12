@@ -1,9 +1,9 @@
 "use client";
 
 import { useEffect, useState } from "react";
-import { motion } from "framer-motion";
+import { motion, AnimatePresence } from "framer-motion";
 import Link from "next/link";
-import { Globe2, CheckCircle2, PlayCircle, ChevronRight, Star, Lock } from "lucide-react";
+import { Globe2, CheckCircle2, PlayCircle, ChevronRight, Star, Lock, XCircle } from "lucide-react";
 import { apiFetch } from "@/lib/api";
 
 interface WorldProgress {
@@ -13,6 +13,7 @@ interface WorldProgress {
   description: string;
   order_index: number;
   xp_reward: number;
+  unlock_criteria: any;
   lesson_count: number;
   game_count: number;
   boss_count: number;
@@ -42,7 +43,7 @@ const WORLD_THEMES: Record<string, { gradient: string; icon: string; glow: strin
   },
 };
 
-function WorldCard({ world, index }: { world: WorldProgress; index: number }) {
+function WorldCard({ world, index, onLockClick }: { world: WorldProgress; index: number; onLockClick: (world: WorldProgress) => void }) {
   const theme = WORLD_THEMES[world.slug] ?? {
     gradient: "from-accent-purple/20 to-brand-cyan/10",
     icon: "🌍",
@@ -154,10 +155,13 @@ function WorldCard({ world, index }: { world: WorldProgress; index: number }) {
               <ChevronRight className="w-4 h-4" />
             </Link>
           ) : (
-            <div className="flex items-center justify-center gap-2 w-full py-2.5 rounded-lg bg-bg-elevated text-text-muted font-medium text-sm border border-border cursor-not-allowed">
+            <button
+              onClick={() => onLockClick(world)}
+              className="flex items-center justify-center gap-2 w-full py-2.5 rounded-lg bg-bg-elevated text-text-muted hover:text-white font-medium text-sm border border-border transition-colors hover:bg-bg-elevated/80"
+            >
               <Lock className="w-4 h-4" />
-              Complete prerequisites
-            </div>
+              View Prerequisites
+            </button>
           )}
         </div>
 
@@ -173,10 +177,18 @@ function WorldCard({ world, index }: { world: WorldProgress; index: number }) {
 export default function WorldsPage() {
   const [worlds, setWorlds] = useState<WorldProgress[]>([]);
   const [loading, setLoading] = useState(true);
+  const [selectedWorldForPrereq, setSelectedWorldForPrereq] = useState<WorldProgress | null>(null);
+  const [masteryScores, setMasteryScores] = useState<Array<{ topicId: string; score: number }>>([]);
 
   useEffect(() => {
-    apiFetch<WorldProgress[]>("/worlds")
-      .then((res) => setWorlds(res.data))
+    Promise.all([
+      apiFetch<WorldProgress[]>("/worlds"),
+      apiFetch<Array<{ topicId: string; score: number }>>("/mastery")
+    ])
+      .then(([worldsRes, masteryRes]) => {
+        setWorlds(worldsRes.data);
+        setMasteryScores(masteryRes.data);
+      })
       .catch(() => {})
       .finally(() => setLoading(false));
   }, []);
@@ -223,7 +235,12 @@ export default function WorldsPage() {
       {/* World Grid */}
       <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
         {worlds.map((world, index) => (
-          <WorldCard key={world.id} world={world} index={index} />
+          <WorldCard
+            key={world.id}
+            world={world}
+            index={index}
+            onLockClick={(w) => setSelectedWorldForPrereq(w)}
+          />
         ))}
         {worlds.length === 0 && (
           <div className="col-span-3 text-center py-20 text-text-muted">
@@ -231,6 +248,111 @@ export default function WorldsPage() {
           </div>
         )}
       </div>
+
+      {/* Prerequisite Modal */}
+      <AnimatePresence>
+        {selectedWorldForPrereq && (
+          <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-bg-primary/85 backdrop-blur-md">
+            <motion.div
+              initial={{ opacity: 0, scale: 0.95, y: 20 }}
+              animate={{ opacity: 1, scale: 1, y: 0 }}
+              exit={{ opacity: 0, scale: 0.95, y: 20 }}
+              className="w-full max-w-md bg-bg-secondary border border-border rounded-2xl p-6 shadow-2xl relative"
+            >
+              {/* Header */}
+              <div className="flex items-start justify-between mb-4">
+                <div className="flex items-center gap-2.5">
+                  <div className="w-8 h-8 rounded-lg bg-accent-orange/20 border border-accent-orange/30 flex items-center justify-center text-accent-orange">
+                    <Lock className="w-4 h-4" />
+                  </div>
+                  <div>
+                    <h3 className="text-base font-heading font-bold text-white">Prerequisites</h3>
+                    <p className="text-xs text-text-secondary">Unlock: {selectedWorldForPrereq.name}</p>
+                  </div>
+                </div>
+                <button
+                  onClick={() => setSelectedWorldForPrereq(null)}
+                  className="text-text-muted hover:text-white transition-colors"
+                >
+                  <XCircle className="w-5 h-5" />
+                </button>
+              </div>
+
+              {/* Checklist */}
+              <div className="space-y-4 my-6">
+                {(() => {
+                  const criteria = selectedWorldForPrereq.unlock_criteria as any;
+                  const reqTopics = criteria?.required_topics ?? [];
+                  let totalGap = 0;
+
+                  if (reqTopics.length === 0) {
+                    return <p className="text-sm text-text-secondary">No specific topic prerequisites are required for this world.</p>;
+                  }
+
+                  return (
+                    <>
+                      {reqTopics.map((req: any) => {
+                        const scoreEntry = masteryScores.find((m) => m.topicId === req.topic_id);
+                        const currentScore = scoreEntry?.score ?? 0;
+                        const reqScore = req.min_mastery;
+                        const gap = Math.max(0, reqScore - currentScore);
+                        totalGap += gap;
+                        const meets = currentScore >= reqScore;
+
+                        return (
+                          <div key={req.topic_id} className="bg-bg-elevated/40 border border-border/60 rounded-xl p-4">
+                            <div className="flex items-center justify-between mb-2">
+                              <span className="text-sm font-medium text-white capitalize">
+                                {req.topic_id.replace("_", " ")}
+                              </span>
+                              <span className={`text-xs px-2 py-0.5 rounded-full font-medium ${
+                                meets ? "bg-accent-green/20 text-accent-green" : "bg-accent-orange/20 text-accent-orange"
+                              }`}>
+                                {meets ? "Met" : `Gap: ${Math.round(gap * 100)}%`}
+                              </span>
+                            </div>
+                            
+                            <div className="flex justify-between text-xs text-text-secondary mb-1">
+                              <span>Current: {Math.round(currentScore * 100)}%</span>
+                              <span>Required: {Math.round(reqScore * 100)}%</span>
+                            </div>
+
+                            <div className="w-full bg-bg-elevated rounded-full h-1.5 overflow-hidden">
+                              <div
+                                className={`h-1.5 rounded-full ${meets ? "bg-accent-green" : "bg-accent-orange"}`}
+                                style={{ width: `${Math.min(100, (currentScore / reqScore) * 100)}%` }}
+                              />
+                            </div>
+                          </div>
+                        );
+                      })}
+
+                      {/* Time estimation */}
+                      <div className="bg-bg-elevated/60 border border-border/80 rounded-xl p-4 flex items-start gap-3 mt-4">
+                        <div className="text-xl">⏳</div>
+                        <div>
+                          <p className="text-xs font-semibold text-white uppercase tracking-wider">Estimated Time to Unlock</p>
+                          <p className="text-sm text-text-secondary mt-0.5">
+                            Approx. <span className="font-mono font-bold text-brand-cyan">{Math.max(15, Math.ceil(totalGap * 120))} mins</span> of practice and reviews.
+                          </p>
+                        </div>
+                      </div>
+                    </>
+                  );
+                })()}
+              </div>
+
+              {/* Action Button */}
+              <button
+                onClick={() => setSelectedWorldForPrereq(null)}
+                className="w-full py-2.5 rounded-xl bg-brand-cyan text-bg-primary font-bold text-sm hover:bg-brand-cyan/90 transition-colors text-center"
+              >
+                Close
+              </button>
+            </motion.div>
+          </div>
+        )}
+      </AnimatePresence>
     </div>
   );
 }

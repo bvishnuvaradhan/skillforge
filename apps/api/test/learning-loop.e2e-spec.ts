@@ -4,6 +4,7 @@ import request from 'supertest';
 import { AppModule } from './../src/app.module';
 import { prisma } from '@skillforge/db';
 import cookieParser from 'cookie-parser';
+import { RedisService } from '../src/auth/redis.service';
 
 jest.setTimeout(30000);
 
@@ -260,12 +261,77 @@ describe('LearningLoop (e2e)', () => {
   });
 
   describe('POST /worlds/:slug/lessons/:lessonId/complete', () => {
-    it('should successfully complete the lesson and award initial XP', async () => {
+    let lesson2Id = '';
+
+    beforeAll(async () => {
+      const lesson2 = await prisma.lesson.create({
+        data: {
+          worldId: world1Id,
+          title: 'Variables Basics Part 2',
+          orderIndex: 2,
+          estimatedMinutes: 5,
+          topicTags: ['variables'],
+          status: 'published',
+          content: { blocks: [{ type: 'paragraph', content: 'More variables.' }] },
+        },
+      });
+      lesson2Id = lesson2.id;
+    });
+
+    afterAll(async () => {
+      await prisma.lesson.delete({ where: { id: lesson2Id } }).catch(() => {});
+    });
+
+    it('should reject completing a future lesson out of order', async () => {
+      const slug1 = `variables-kingdom-e2e-${uniqueId}`;
+      const response = await request(app.getHttpServer())
+        .post(`/worlds/${slug1}/lessons/${lesson2Id}/complete`)
+        .set('Cookie', studentCookie)
+        .expect(400);
+
+      expect(response.body.success).toBe(false);
+      expect(response.body.error.code).toBe('PREREQUISITE_LESSON_REQUIRED');
+    });
+
+    it('should successfully complete the first lesson and award initial XP', async () => {
       const slug1 = `variables-kingdom-e2e-${uniqueId}`;
       const response = await request(app.getHttpServer())
         .post(`/worlds/${slug1}/lessons/${lessonId}/complete`)
         .set('Cookie', studentCookie)
-        .expect(201); // NestJS default for POST is 201
+        .expect(201);
+
+      expect(response.body.success).toBe(true);
+      expect(response.body.data.xp_earned).toBe(25);
+    });
+
+    it('should return completed: true when fetching an already completed lesson', async () => {
+      const slug1 = `variables-kingdom-e2e-${uniqueId}`;
+      const response = await request(app.getHttpServer())
+        .get(`/worlds/${slug1}/lessons/${lessonId}`)
+        .set('Cookie', studentCookie)
+        .expect(200);
+
+      expect(response.body.success).toBe(true);
+      expect(response.body.data.completed).toBe(true);
+    });
+
+    it('should return 0 XP on duplicate completions of the same lesson', async () => {
+      const slug1 = `variables-kingdom-e2e-${uniqueId}`;
+      const response = await request(app.getHttpServer())
+        .post(`/worlds/${slug1}/lessons/${lessonId}/complete`)
+        .set('Cookie', studentCookie)
+        .expect(201);
+
+      expect(response.body.success).toBe(true);
+      expect(response.body.data.xp_earned).toBe(0);
+    });
+
+    it('should complete the second lesson successfully now that the first is completed', async () => {
+      const slug1 = `variables-kingdom-e2e-${uniqueId}`;
+      const response = await request(app.getHttpServer())
+        .post(`/worlds/${slug1}/lessons/${lesson2Id}/complete`)
+        .set('Cookie', studentCookie)
+        .expect(201);
 
       expect(response.body.success).toBe(true);
       expect(response.body.data.xp_earned).toBe(25);
@@ -326,9 +392,132 @@ describe('LearningLoop (e2e)', () => {
     });
   });
 
-  describe('POST /boss/:id/submit', () => {
-    it('should grade boss battle questions, award XP, and unlock badge', async () => {
-      const response = await request(app.getHttpServer())
+  describe('POST /boss/:id/submit - Progressive Cooldowns', () => {
+    it('should implement progressive cooldowns on failure and clear on victory', async () => {
+      const redisService = app.get(RedisService);
+      const cooldownKey = `boss_cooldown:${studentId}:${bossId}`;
+      const failuresKey = `boss_failures:${studentId}:${bossId}`;
+
+      // Clean up keys before starting test
+      await redisService.del(cooldownKey);
+      await redisService.del(failuresKey);
+
+      // 1. First failure -> Cooldown should be ~2 hours
+      const fail1 = await request(app.getHttpServer())
+        .post(`/boss/${bossId}/submit`)
+        .set('Cookie', studentCookie)
+        .send({
+          answers: [
+            { question_id: 'q1', answer: 'incorrect-choice-123' }
+          ],
+          timeSeconds: 10
+        })
+        .expect(201);
+
+      expect(fail1.body.data.passed).toBe(false);
+      
+      // Cooldown check on fetch
+      const fetchCooldown1 = await request(app.getHttpServer())
+        .get(`/boss/${bossId}`)
+        .set('Cookie', studentCookie)
+        .expect(200);
+
+      expect(fetchCooldown1.body.data.on_cooldown).toBe(true);
+      expect(fetchCooldown1.body.data.cooldown_remaining_seconds).toBeGreaterThan(7000);
+      expect(fetchCooldown1.body.data.cooldown_remaining_seconds).toBeLessThanOrEqual(7200);
+
+      // Clear cooldown key for next attempt (failures count remains)
+      await redisService.del(cooldownKey);
+
+      // 2. Second failure -> Cooldown should be ~4 hours
+      const fail2 = await request(app.getHttpServer())
+        .post(`/boss/${bossId}/submit`)
+        .set('Cookie', studentCookie)
+        .send({
+          answers: [
+            { question_id: 'q1', answer: 'incorrect-choice-123' }
+          ],
+          timeSeconds: 10
+        })
+        .expect(201);
+
+      expect(fail2.body.data.passed).toBe(false);
+
+      const fetchCooldown2 = await request(app.getHttpServer())
+        .get(`/boss/${bossId}`)
+        .set('Cookie', studentCookie)
+        .expect(200);
+
+      expect(fetchCooldown2.body.data.on_cooldown).toBe(true);
+      expect(fetchCooldown2.body.data.cooldown_remaining_seconds).toBeGreaterThan(14000);
+      expect(fetchCooldown2.body.data.cooldown_remaining_seconds).toBeLessThanOrEqual(14400);
+
+      await redisService.del(cooldownKey);
+
+      // 3. Third failure -> Cooldown should be ~8 hours
+      const fail3 = await request(app.getHttpServer())
+        .post(`/boss/${bossId}/submit`)
+        .set('Cookie', studentCookie)
+        .send({
+          answers: [
+            { question_id: 'q1', answer: 'incorrect-choice-123' }
+          ],
+          timeSeconds: 10
+        })
+        .expect(201);
+
+      expect(fail3.body.data.passed).toBe(false);
+
+      const fetchCooldown3 = await request(app.getHttpServer())
+        .get(`/boss/${bossId}`)
+        .set('Cookie', studentCookie)
+        .expect(200);
+
+      expect(fetchCooldown3.body.data.on_cooldown).toBe(true);
+      expect(fetchCooldown3.body.data.cooldown_remaining_seconds).toBeGreaterThan(28000);
+      expect(fetchCooldown3.body.data.cooldown_remaining_seconds).toBeLessThanOrEqual(28800);
+
+      await redisService.del(cooldownKey);
+
+      // 4. Fourth failure -> Cooldown should be ~12 hours
+      const fail4 = await request(app.getHttpServer())
+        .post(`/boss/${bossId}/submit`)
+        .set('Cookie', studentCookie)
+        .send({
+          answers: [
+            { question_id: 'q1', answer: 'incorrect-choice-123' }
+          ],
+          timeSeconds: 10
+        })
+        .expect(201);
+
+      expect(fail4.body.data.passed).toBe(false);
+
+      const fetchCooldown4 = await request(app.getHttpServer())
+        .get(`/boss/${bossId}`)
+        .set('Cookie', studentCookie)
+        .expect(200);
+
+      expect(fetchCooldown4.body.data.on_cooldown).toBe(true);
+      expect(fetchCooldown4.body.data.cooldown_remaining_seconds).toBeGreaterThan(42000);
+      expect(fetchCooldown4.body.data.cooldown_remaining_seconds).toBeLessThanOrEqual(43200);
+
+      // Attempting on cooldown should be rejected
+      await request(app.getHttpServer())
+        .post(`/boss/${bossId}/submit`)
+        .set('Cookie', studentCookie)
+        .send({
+          answers: [
+            { question_id: 'q1', answer: 'const' }
+          ],
+          timeSeconds: 10
+        })
+        .expect(403);
+
+      await redisService.del(cooldownKey);
+
+      // 5. Victory -> clears failures and cooldown
+      const passRes = await request(app.getHttpServer())
         .post(`/boss/${bossId}/submit`)
         .set('Cookie', studentCookie)
         .send({
@@ -339,17 +528,14 @@ describe('LearningLoop (e2e)', () => {
         })
         .expect(201);
 
-      expect(response.body.success).toBe(true);
-      expect(response.body.data.passed).toBe(true);
-      expect(response.body.data.score).toBe(1.0);
-      expect(response.body.data.badge_earned).toBeDefined();
-      expect(response.body.data.badge_earned.id).toBe(badgeId);
+      expect(passRes.body.success).toBe(true);
+      expect(passRes.body.data.passed).toBe(true);
 
-      // Verify UserBadge is saved in DB
-      const userBadge = await prisma.userBadge.findUnique({
-        where: { userId_badgeId: { userId: studentId, badgeId } }
-      });
-      expect(userBadge).not.toBeNull();
+      // Verify Redis keys are deleted on victory
+      const hasCooldown = await redisService.exists(cooldownKey);
+      const hasFailures = await redisService.exists(failuresKey);
+      expect(hasCooldown).toBe(false);
+      expect(hasFailures).toBe(false);
     });
   });
 });

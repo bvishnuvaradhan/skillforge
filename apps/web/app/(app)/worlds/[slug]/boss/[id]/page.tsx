@@ -59,6 +59,72 @@ function RarityBadge({ rarity }: { rarity: string }) {
   );
 }
 
+function ParticleBurst() {
+  const [particles, setParticles] = useState<Array<{ id: number; x: number; y: number; color: string; size: number }>>([]);
+
+  useEffect(() => {
+    const colors = ["#00B4D8", "#7B2FBE", "#06D6A0", "#FF6B35", "#EF4444"];
+    const newParticles = Array.from({ length: 45 }).map((_, i) => ({
+      id: i,
+      x: (Math.random() - 0.5) * 500,
+      y: (Math.random() - 0.5) * 500 - 50,
+      color: colors[Math.floor(Math.random() * colors.length)] ?? "#00B4D8",
+      size: Math.random() * 8 + 4,
+    }));
+    setParticles(newParticles);
+  }, []);
+
+  return (
+    <div className="absolute inset-0 pointer-events-none flex items-center justify-center overflow-visible">
+      {particles.map((p) => (
+        <motion.div
+          key={p.id}
+          initial={{ x: 0, y: 0, scale: 1, opacity: 1 }}
+          animate={{
+            x: p.x,
+            y: p.y,
+            scale: 0.1,
+            opacity: 0,
+          }}
+          transition={{ duration: 1.8, ease: "easeOut" }}
+          className="absolute rounded-full"
+          style={{
+            backgroundColor: p.color,
+            width: p.size,
+            height: p.size,
+          }}
+        />
+      ))}
+    </div>
+  );
+}
+
+function TickUpXP({ value }: { value: number }) {
+  const [displayValue, setDisplayValue] = useState(0);
+
+  useEffect(() => {
+    if (value <= 0) return;
+    let start = 0;
+    const duration = 1500;
+    const steps = Math.min(value, 30);
+    const stepValue = Math.ceil(value / steps);
+    const stepTime = duration / steps;
+    
+    const timer = setInterval(() => {
+      start += stepValue;
+      if (start >= value) {
+        setDisplayValue(value);
+        clearInterval(timer);
+      } else {
+        setDisplayValue(start);
+      }
+    }, stepTime);
+    return () => clearInterval(timer);
+  }, [value]);
+
+  return <span className="font-mono font-bold text-accent-orange">+{displayValue}</span>;
+}
+
 export default function BossBattlePage() {
   const { slug, id } = useParams<{ slug: string; id: string }>();
   const router = useRouter();
@@ -153,17 +219,24 @@ export default function BossBattlePage() {
 
   if (result) {
     return (
-      <div className="p-8 max-w-2xl mx-auto">
+      <div className="p-8 max-w-2xl mx-auto relative">
+        {result.passed && <ParticleBurst />}
         <motion.div
           initial={{ opacity: 0, scale: 0.95 }}
           animate={{ opacity: 1, scale: 1 }}
-          className={`bg-bg-secondary border rounded-2xl p-8 text-center ${
+          className={`bg-bg-secondary border rounded-2xl p-8 text-center relative z-10 ${
             result.passed ? "border-accent-green/30" : "border-accent-red/30"
           }`}
         >
           <div className="mb-4">
             {result.passed ? (
-              <CheckCircle className="w-16 h-16 text-accent-green mx-auto" />
+              <motion.div
+                initial={{ scale: 0 }}
+                animate={{ scale: [0, 1.2, 1] }}
+                transition={{ duration: 0.6, ease: "easeOut" }}
+              >
+                <CheckCircle className="w-16 h-16 text-accent-green mx-auto filter drop-shadow-[0_0_8px_rgba(6,214,160,0.5)]" />
+              </motion.div>
             ) : (
               <XCircle className="w-16 h-16 text-accent-red mx-auto" />
             )}
@@ -172,7 +245,7 @@ export default function BossBattlePage() {
             {result.passed ? "Boss Defeated! 🏆" : "Defeated..."}
           </h2>
           <p className="text-text-secondary mb-6">{result.feedback}</p>
-
+ 
           {/* Stats */}
           <div className="grid grid-cols-3 gap-4 mb-6">
             <div className="bg-bg-elevated rounded-xl p-4">
@@ -185,21 +258,33 @@ export default function BossBattlePage() {
             </div>
             {result.passed && (
               <div className="bg-bg-elevated rounded-xl p-4">
-                <p className="text-2xl font-mono font-bold text-accent-orange">+{result.xp_earned}</p>
+                <p className="text-2xl font-mono font-bold">
+                  <TickUpXP value={result.xp_earned} />
+                </p>
                 <p className="text-xs text-text-muted mt-1">XP Earned</p>
               </div>
             )}
           </div>
-
+ 
           {/* Badge earned */}
           {result.badge_earned && (
-            <div className="mb-6 p-4 bg-accent-purple/10 border border-accent-purple/20 rounded-xl">
-              <Trophy className="w-6 h-6 text-accent-purple mx-auto mb-2" />
-              <p className="text-sm font-medium text-white">{result.badge_earned.name} badge earned!</p>
+            <motion.div
+              initial={{ scale: 0, rotate: -180 }}
+              animate={{ scale: 1, rotate: 0 }}
+              transition={{ type: "spring", damping: 10, stiffness: 100 }}
+              className="mb-6 p-4 bg-accent-purple/10 border border-accent-purple/20 rounded-xl relative overflow-hidden"
+            >
+              <motion.div
+                animate={{ y: [0, -6, 0] }}
+                transition={{ duration: 2, repeat: Infinity, ease: "easeInOut" }}
+              >
+                <Trophy className="w-10 h-10 text-accent-purple mx-auto mb-2 filter drop-shadow-[0_0_8px_rgba(123,47,190,0.5)]" />
+              </motion.div>
+              <p className="text-sm font-medium text-white mb-1">{result.badge_earned.name} badge earned!</p>
               <RarityBadge rarity={result.badge_earned.rarity} />
-            </div>
+            </motion.div>
           )}
-
+ 
           <Link
             href={`/worlds/${slug}`}
             className="inline-flex items-center gap-2 px-6 py-3 bg-brand-cyan text-bg-primary rounded-xl font-semibold hover:bg-brand-cyan/90 transition-colors"

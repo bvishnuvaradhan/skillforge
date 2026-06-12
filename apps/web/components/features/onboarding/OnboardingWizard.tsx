@@ -42,7 +42,7 @@ export const OnboardingWizard = () => {
   const [isLoading, setIsLoading] = useState<boolean>(false);
 
   // Form State
-  // goal set on backend
+  const [selectedGoal, setSelectedGoal] = useState<Goal | null>(null);
   
   // Coding profiles linking state
   const [profiles, setProfiles] = useState({
@@ -95,12 +95,12 @@ export const OnboardingWizard = () => {
   }, [currentStep]);
 
   // Step 1: Submit Goal
-  const handleGoalSubmit = async (goal: Goal) => {
+  const handleGoalSubmit = async (goal: Goal, languageTrack: string) => {
     setIsLoading(true);
     try {
       await apiFetch("/onboarding/goal", {
         method: "POST",
-        body: JSON.stringify({ goal }),
+        body: JSON.stringify({ goal, language_track: languageTrack }),
       });
       setCurrentStep(2);
     } catch (err: unknown) {
@@ -224,68 +224,143 @@ export const OnboardingWizard = () => {
       {/* Step 1: Goal Selection */}
       {currentStep === 1 && (
         <div className="flex flex-col gap-6">
-          <div className="text-center">
-            <h2 className="text-xl font-heading font-extrabold text-text-primary">
-              Choose your main learning target
-            </h2>
-            <p className="text-xs text-text-secondary mt-1.5">
-              We will structure your worlds, roadmap nodes, and AI mock interviews based on this goal.
-            </p>
-          </div>
+          {!selectedGoal ? (
+            <>
+              <div className="text-center">
+                <h2 className="text-xl font-heading font-extrabold text-text-primary">
+                  Choose your main learning target
+                </h2>
+                <p className="text-xs text-text-secondary mt-1.5">
+                  We will structure your worlds, roadmap nodes, and AI mock interviews based on this goal.
+                </p>
+              </div>
 
-          <div className="grid grid-cols-1 md:grid-cols-2 gap-4 mt-2">
-            <button
-              onClick={() => handleGoalSubmit("placements")}
-              disabled={isLoading}
-              className="flex flex-col text-left p-5 bg-bg-primary/40 hover:bg-[#00B4D8]/5 border border-border hover:border-brand-cyan/40 rounded-xl transition-all duration-300 group"
-            >
-              <span className="text-sm font-semibold text-text-primary group-hover:text-brand-cyan transition-colors">
-                💼 Placements Preparation
-              </span>
-              <span className="text-xs text-text-secondary mt-1.5 leading-relaxed">
-                Curated DSA patterns, system design, mock HR/tech rounds, and resume-ready portfolios.
-              </span>
-            </button>
+              <div className="grid grid-cols-1 md:grid-cols-2 gap-4 mt-2">
+                <button
+                  onClick={() => setSelectedGoal("placements")}
+                  disabled={isLoading}
+                  className="flex flex-col text-left p-5 bg-bg-primary/40 hover:bg-[#00B4D8]/5 border border-border hover:border-brand-cyan/40 rounded-xl transition-all duration-300 group"
+                >
+                  <span className="text-sm font-semibold text-text-primary group-hover:text-brand-cyan transition-colors">
+                    💼 Placements Preparation
+                  </span>
+                  <span className="text-xs text-text-secondary mt-1.5 leading-relaxed">
+                    Curated DSA patterns, system design, mock HR/tech rounds, and resume-ready portfolios.
+                  </span>
+                </button>
 
-            <button
-              onClick={() => handleGoalSubmit("competitive")}
-              disabled={isLoading}
-              className="flex flex-col text-left p-5 bg-bg-primary/40 hover:bg-[#00B4D8]/5 border border-border hover:border-brand-cyan/40 rounded-xl transition-all duration-300 group"
-            >
-              <span className="text-sm font-semibold text-text-primary group-hover:text-brand-cyan transition-colors">
-                🏆 Competitive Programming
-              </span>
-              <span className="text-xs text-text-secondary mt-1.5 leading-relaxed">
-                Advanced mathematical tricks, codeforces templates, fast I/O, and hard algorithms.
-              </span>
-            </button>
+                <button
+                  onClick={() => setSelectedGoal("competitive")}
+                  disabled={isLoading}
+                  className="flex flex-col text-left p-5 bg-bg-primary/40 hover:bg-[#00B4D8]/5 border border-border hover:border-brand-cyan/40 rounded-xl transition-all duration-300 group"
+                >
+                  <span className="text-sm font-semibold text-text-primary group-hover:text-brand-cyan transition-colors">
+                    🏆 Competitive Programming
+                  </span>
+                  <span className="text-xs text-text-secondary mt-1.5 leading-relaxed">
+                    Advanced mathematical tricks, codeforces templates, fast I/O, and hard algorithms.
+                  </span>
+                </button>
 
-            <button
-              onClick={() => handleGoalSubmit("dsa")}
-              disabled={isLoading}
-              className="flex flex-col text-left p-5 bg-bg-primary/40 hover:bg-[#00B4D8]/5 border border-border hover:border-brand-cyan/40 rounded-xl transition-all duration-300 group"
-            >
-              <span className="text-sm font-semibold text-text-primary group-hover:text-brand-cyan transition-colors">
-                🧬 DSA Foundations
-              </span>
-              <span className="text-xs text-text-secondary mt-1.5 leading-relaxed">
-                For beginners wanting clean mental models, robust theory, visual runs, and core mastery.
-              </span>
-            </button>
+                <button
+                  onClick={() => setSelectedGoal("dsa")}
+                  disabled={isLoading}
+                  className="flex flex-col text-left p-5 bg-bg-primary/40 hover:bg-[#00B4D8]/5 border border-border hover:border-brand-cyan/40 rounded-xl transition-all duration-300 group"
+                >
+                  <span className="text-sm font-semibold text-text-primary group-hover:text-brand-cyan transition-colors">
+                    🧬 DSA Foundations
+                  </span>
+                  <span className="text-xs text-text-secondary mt-1.5 leading-relaxed">
+                    For beginners wanting clean mental models, robust theory, visual runs, and core mastery.
+                  </span>
+                </button>
 
-            <button
-              onClick={() => handleGoalSubmit("interviews")}
-              disabled={isLoading}
-              className="flex flex-col text-left p-5 bg-bg-primary/40 hover:bg-[#00B4D8]/5 border border-border hover:border-brand-cyan/40 rounded-xl transition-all duration-300 group"
-            >
-              <span className="text-sm font-semibold text-text-primary group-hover:text-brand-cyan transition-colors">
-                🚀 Immediate Job Interviews
-              </span>
-              <span className="text-xs text-text-secondary mt-1.5 leading-relaxed">
-                Fast-track cheat sheets, active recall cards, coding challenges, and mock loops.
-              </span>
-            </button>
-          </div>
+                <button
+                  onClick={() => setSelectedGoal("interviews")}
+                  disabled={isLoading}
+                  className="flex flex-col text-left p-5 bg-bg-primary/40 hover:bg-[#00B4D8]/5 border border-border hover:border-brand-cyan/40 rounded-xl transition-all duration-300 group"
+                >
+                  <span className="text-sm font-semibold text-text-primary group-hover:text-brand-cyan transition-colors">
+                    🚀 Immediate Job Interviews
+                  </span>
+                  <span className="text-xs text-text-secondary mt-1.5 leading-relaxed">
+                    Fast-track cheat sheets, active recall cards, coding challenges, and mock loops.
+                  </span>
+                </button>
+              </div>
+            </>
+          ) : (
+            <>
+              <div className="text-center">
+                <h2 className="text-xl font-heading font-extrabold text-text-primary">
+                  Choose your programming language track
+                </h2>
+                <p className="text-xs text-text-secondary mt-1.5">
+                  Your lessons, coding exercises, and template configurations will automatically adapt.
+                </p>
+              </div>
+
+              <div className="grid grid-cols-1 md:grid-cols-2 gap-4 mt-2">
+                <button
+                  onClick={() => handleGoalSubmit(selectedGoal, "CPP")}
+                  disabled={isLoading}
+                  className="flex flex-col text-left p-5 bg-bg-primary/40 hover:bg-[#00B4D8]/5 border border-border hover:border-brand-cyan/40 rounded-xl transition-all duration-300 group"
+                >
+                  <span className="text-sm font-semibold text-text-primary group-hover:text-brand-cyan transition-colors">
+                    ⚡ C++ Track
+                  </span>
+                  <span className="text-xs text-text-secondary mt-1.5 leading-relaxed">
+                    Industry standard for performance and competitive programming. Master STL, templates, and raw memory.
+                  </span>
+                </button>
+
+                <button
+                  onClick={() => handleGoalSubmit(selectedGoal, "JAVA")}
+                  disabled={isLoading}
+                  className="flex flex-col text-left p-5 bg-bg-primary/40 hover:bg-[#00B4D8]/5 border border-border hover:border-brand-cyan/40 rounded-xl transition-all duration-300 group"
+                >
+                  <span className="text-sm font-semibold text-text-primary group-hover:text-brand-cyan transition-colors">
+                    ☕ Java Track
+                  </span>
+                  <span className="text-xs text-text-secondary mt-1.5 leading-relaxed">
+                    Enterprise and backend favorite. Leverage the Collections Framework, garbage collection, and OOP principles.
+                  </span>
+                </button>
+
+                <button
+                  onClick={() => handleGoalSubmit(selectedGoal, "PYTHON")}
+                  disabled={isLoading}
+                  className="flex flex-col text-left p-5 bg-bg-primary/40 hover:bg-[#00B4D8]/5 border border-border hover:border-brand-cyan/40 rounded-xl transition-all duration-300 group"
+                >
+                  <span className="text-sm font-semibold text-text-primary group-hover:text-brand-cyan transition-colors">
+                    🐍 Python Track
+                  </span>
+                  <span className="text-xs text-text-secondary mt-1.5 leading-relaxed">
+                    Expressive, clean, and fast to write. Perfect for algorithm modeling, interviews, and machine learning.
+                  </span>
+                </button>
+
+                <button
+                  onClick={() => handleGoalSubmit(selectedGoal, "JAVASCRIPT")}
+                  disabled={isLoading}
+                  className="flex flex-col text-left p-5 bg-bg-primary/40 hover:bg-[#00B4D8]/5 border border-border hover:border-brand-cyan/40 rounded-xl transition-all duration-300 group"
+                >
+                  <span className="text-sm font-semibold text-text-primary group-hover:text-brand-cyan transition-colors">
+                    🌐 JavaScript Track
+                  </span>
+                  <span className="text-xs text-text-secondary mt-1.5 leading-relaxed">
+                    Web native and highly dynamic. Master functional concepts, closures, and async event-driven coding.
+                  </span>
+                </button>
+              </div>
+
+              <div className="flex justify-start mt-4">
+                <Button variant="outline" onClick={() => setSelectedGoal(null)} disabled={isLoading}>
+                  Change Goal
+                </Button>
+              </div>
+            </>
+          )}
         </div>
       )}
 

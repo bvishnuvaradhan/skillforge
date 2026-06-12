@@ -17,17 +17,33 @@ export class WorldsService {
    * GET /v1/worlds — world map overview with user progress
    */
   async getWorlds(userId: string) {
+    const user = await prisma.user.findUnique({
+      where: { id: userId },
+      select: { languageTrack: true }
+    });
+    const languageTrack = user?.languageTrack ?? 'JAVASCRIPT';
+
     const worlds = await prisma.world.findMany({
       where: { status: 'published' },
       orderBy: { orderIndex: 'asc' },
       include: {
         progressEntries: { where: { userId } },
-        _count: { select: { lessons: true, games: true, bossBattles: true } },
+        lessons: {
+          where: { status: 'published', languageTrack },
+          select: { id: true },
+        },
+        _count: { select: { games: true, bossBattles: true } },
       },
     });
 
     return worlds.map((w) => {
       const progress = w.progressEntries[0];
+      const isUnlockedByDefault = !w.unlockCriteria ||
+        Object.keys(w.unlockCriteria as Record<string, any>).length === 0 ||
+        w.orderIndex === 1;
+
+      const status = progress?.status ?? (isUnlockedByDefault ? 'unlocked' : 'locked');
+
       return {
         id: w.id,
         slug: w.slug,
@@ -36,17 +52,15 @@ export class WorldsService {
         order_index: w.orderIndex,
         xp_reward: w.xpReward,
         unlock_criteria: w.unlockCriteria,
-        lesson_count: w._count.lessons,
+        lesson_count: w.lessons.length,
         game_count: w._count.games,
         boss_count: w._count.bossBattles,
-        progress: progress
-          ? {
-              status: progress.status,
-              lessons_completed: progress.lessonsCompleted,
-              games_completed: progress.gamesCompleted,
-              xp_earned: progress.xpEarned,
-            }
-          : { status: 'locked', lessons_completed: 0, games_completed: 0, xp_earned: 0 },
+        progress: {
+          status,
+          lessons_completed: progress?.lessonsCompleted ?? 0,
+          games_completed: progress?.gamesCompleted ?? 0,
+          xp_earned: progress?.xpEarned ?? 0,
+        },
       };
     });
   }
@@ -55,10 +69,19 @@ export class WorldsService {
    * GET /v1/worlds/:slug — full world detail (403 if locked)
    */
   async getWorldBySlug(userId: string, slug: string) {
+    const user = await prisma.user.findUnique({
+      where: { id: userId },
+      select: { languageTrack: true }
+    });
+    const languageTrack = user?.languageTrack ?? 'JAVASCRIPT';
+
     const world = await prisma.world.findUnique({
       where: { slug },
       include: {
-        lessons: { where: { status: 'published' }, orderBy: { orderIndex: 'asc' } },
+        lessons: { 
+          where: { status: 'published', languageTrack }, 
+          orderBy: { orderIndex: 'asc' } 
+        },
         games: { orderBy: { orderIndex: 'asc' } },
         bossBattles: {
           include: { badge: true },
@@ -75,7 +98,11 @@ export class WorldsService {
     }
 
     const progress = world.progressEntries[0];
-    const status = progress?.status ?? 'locked';
+    const isUnlockedByDefault = !world.unlockCriteria ||
+      Object.keys(world.unlockCriteria as Record<string, any>).length === 0 ||
+      world.orderIndex === 1;
+
+    const status = progress?.status ?? (isUnlockedByDefault ? 'unlocked' : 'locked');
 
     // Enforce lock — never expose content for locked worlds
     if (status === 'locked') {
@@ -132,6 +159,14 @@ export class WorldsService {
     // Verify world access
     await this.assertWorldAccess(userId, worldSlug);
 
+    const world = await prisma.world.findUnique({ where: { slug: worldSlug } });
+    if (!world) {
+      throw new NotFoundException({
+        success: false,
+        error: { code: 'NOT_FOUND', message: 'World not found', details: {} },
+      });
+    }
+
     const lesson = await prisma.lesson.findUnique({ where: { id: lessonId } });
     if (!lesson) {
       throw new NotFoundException({
@@ -140,6 +175,35 @@ export class WorldsService {
       });
     }
 
+    const user = await prisma.user.findUnique({
+      where: { id: userId },
+      select: { languageTrack: true }
+    });
+    const languageTrack = user?.languageTrack ?? 'JAVASCRIPT';
+
+    if (lesson.languageTrack !== languageTrack) {
+      throw new ForbiddenException({
+        success: false,
+        error: {
+          code: 'FORBIDDEN',
+          message: 'This lesson is for a different language track.',
+          details: { expected: languageTrack, actual: lesson.languageTrack },
+        },
+      });
+    }
+
+    const lessons = await prisma.lesson.findMany({
+      where: { worldId: world.id, status: 'published', languageTrack },
+      orderBy: { orderIndex: 'asc' },
+    });
+    const lessonIndex = lessons.findIndex((l) => l.id === lessonId);
+
+    const progress = await prisma.userWorldProgress.findUnique({
+      where: { userId_worldId: { userId, worldId: world.id } },
+    });
+    const lessonsCompletedCount = progress?.lessonsCompleted ?? 0;
+    const completed = lessonIndex !== -1 && lessonIndex < lessonsCompletedCount;
+
     return {
       id: lesson.id,
       title: lesson.title,
@@ -147,6 +211,7 @@ export class WorldsService {
       order_index: lesson.orderIndex,
       estimated_minutes: lesson.estimatedMinutes,
       topic_tags: lesson.topicTags,
+      completed,
     };
   }
 
@@ -161,6 +226,55 @@ export class WorldsService {
 
     const lesson = await prisma.lesson.findUnique({ where: { id: lessonId } });
     if (!lesson) throw new NotFoundException({ success: false, error: { code: 'NOT_FOUND', message: 'Lesson not found', details: {} } });
+
+    const user = await prisma.user.findUnique({
+      where: { id: userId },
+      select: { languageTrack: true }
+    });
+    const languageTrack = user?.languageTrack ?? 'JAVASCRIPT';
+
+    if (lesson.languageTrack !== languageTrack) {
+      throw new ForbiddenException({
+        success: false,
+        error: {
+          code: 'FORBIDDEN',
+          message: 'This lesson is for a different language track.',
+          details: { expected: languageTrack, actual: lesson.languageTrack },
+        },
+      });
+    }
+
+    // Enforce sequential lesson completion
+    const lessons = await prisma.lesson.findMany({
+      where: { worldId: world.id, status: 'published', languageTrack },
+      orderBy: { orderIndex: 'asc' },
+    });
+
+    const lessonIndex = lessons.findIndex((l) => l.id === lessonId);
+    if (lessonIndex === -1) {
+      throw new NotFoundException({ success: false, error: { code: 'NOT_FOUND', message: 'Lesson not found in this world', details: {} } });
+    }
+
+    const progress = await prisma.userWorldProgress.findUnique({
+      where: { userId_worldId: { userId, worldId: world.id } },
+    });
+    const currentCompleted = progress?.lessonsCompleted ?? 0;
+
+    if (lessonIndex < currentCompleted) {
+      // Lesson is already completed, return success but with 0 XP
+      return { message: 'Lesson already completed', xp_earned: 0 };
+    }
+
+    if (lessonIndex > currentCompleted) {
+      throw new BadRequestException({
+        success: false,
+        error: {
+          code: 'PREREQUISITE_LESSON_REQUIRED',
+          message: 'Complete the previous lessons first.',
+          details: { current_completed: currentCompleted, target_lesson_index: lessonIndex },
+        },
+      });
+    }
 
     const XP_PER_LESSON = 25;
 
@@ -203,7 +317,13 @@ export class WorldsService {
       where: { userId_worldId: { userId, worldId: world.id } },
     });
 
-    if (!progress || progress.status === 'locked') {
+    const isUnlockedByDefault = !world.unlockCriteria ||
+      Object.keys(world.unlockCriteria as Record<string, any>).length === 0 ||
+      world.orderIndex === 1;
+
+    const status = progress?.status ?? (isUnlockedByDefault ? 'unlocked' : 'locked');
+
+    if (status === 'locked') {
       throw new ForbiddenException({
         success: false,
         error: { code: 'WORLD_LOCKED', message: 'This world is locked.', details: { slug: worldSlug } },

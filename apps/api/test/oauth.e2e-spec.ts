@@ -247,7 +247,14 @@ describe('OAuth Authentication (e2e)', () => {
         expect(oauthAccount?.providerId).toBe('google-id-link');
       }
 
-      await testApp.close();
+      try {
+        await testApp.close();
+        // Allow BullMQ ioredis worker sockets time to fully drain before test ends
+        await new Promise((resolve) => setTimeout(resolve, 200));
+      } catch {
+        // Suppress BullMQ ioredis socket close race on second app teardown
+      }
+
     });
   });
 });
