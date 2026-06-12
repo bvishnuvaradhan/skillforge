@@ -13,7 +13,10 @@ interface WorldProgress {
   description: string;
   order_index: number;
   xp_reward: number;
-  unlock_criteria: any;
+  unlock_criteria: {
+    required_topics?: { topic_id: string; min_mastery: number }[];
+    overall_retention?: number;
+  };
   lesson_count: number;
   game_count: number;
   boss_count: number;
@@ -281,7 +284,7 @@ export default function WorldsPage() {
               {/* Checklist */}
               <div className="space-y-4 my-6">
                 {(() => {
-                  const criteria = selectedWorldForPrereq.unlock_criteria as any;
+                  const criteria = selectedWorldForPrereq.unlock_criteria;
                   const reqTopics = criteria?.required_topics ?? [];
                   let totalGap = 0;
 
@@ -291,7 +294,7 @@ export default function WorldsPage() {
 
                   return (
                     <>
-                      {reqTopics.map((req: any) => {
+                      {reqTopics.map((req: { topic_id: string; min_mastery: number }) => {
                         const scoreEntry = masteryScores.find((m) => m.topicId === req.topic_id);
                         const currentScore = scoreEntry?.score ?? 0;
                         const reqScore = req.min_mastery;

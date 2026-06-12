@@ -124,7 +124,7 @@ export default function PracticeHubPage() {
     }
 
     let compiledCode = "";
-    let indent = "";
+    const indent = "";
     workspaceBlocks.forEach((block) => {
       if (block.type === "loop" || block.type === "conditional") {
         const parts = block.codeSnippet.split("__BODY__");

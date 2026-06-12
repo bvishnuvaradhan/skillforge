@@ -394,7 +394,7 @@ function BfsExplorerGame({
 
   const computeQueue = (visitedList: string[], targetPath: string[]): string[] => {
     const order = targetPath;
-    let queue: string[] = ["A"];
+    const queue: string[] = ["A"];
     const visitedSet = new Set<string>();
     const queuedSet = new Set<string>(["A"]);
 
@@ -646,7 +646,7 @@ function DfsAdventureGame({
   };
 
   const computeStack = (visitedList: string[], targetPath: string[]): string[] => {
-    let stack: string[] = ["A"];
+    const stack: string[] = ["A"];
     const visitedSet = new Set<string>();
 
     for (const v of visitedList) {
@@ -998,7 +998,7 @@ function RecursionMazeGame({
 
               <div className="pl-4 space-y-2">
                 <div className="flex items-center gap-2">
-                  <span className="text-text-muted text-xs">// Base Case</span>
+                  <span className="text-text-muted text-xs">{"// Base Case"}</span>
                 </div>
                 <input
                   value={baseCase}
@@ -1008,7 +1008,7 @@ function RecursionMazeGame({
                 />
 
                 <div className="flex items-center gap-2 mt-4">
-                  <span className="text-text-muted text-xs">// Recursive Case</span>
+                  <span className="text-text-muted text-xs">{"// Recursive Case"}</span>
                 </div>
                 <input
                   value={recursiveCase}
