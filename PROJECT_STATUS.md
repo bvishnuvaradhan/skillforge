@@ -1,7 +1,7 @@
 SkillForge — Project Status
 Last updated: June 12, 2026
-Current phase: Phase 3 Completed + Corrections Applied, preparing for Phase 4
-Overall progress: Phase 3 of 5
+Current phase: Phase 4A — Roadmaps Restructure (not started)
+Overall progress: Phase 3 of 6 complete
 
 Phase 1 — Foundation
 Completed
@@ -82,8 +82,7 @@ Remaining / Restructuring Progress
 - [x] Step 23: Frontend: Updated dashboard with Phase 3 widgets
 - [x] Step 24: Frontend: Practice hub + Monaco editor
 - [x] Step 25: Frontend: Blockly editor component
-- [ ] Mock Interviews & AI Mentor chatbot integrations (Phase 4)
-- [ ] Resume Builder & LinkedIn optimization services (Phase 5)
+- [ ] See SkillForge_PhasePlan.docx v2 for details on remaining tasks in Phase 4, 5, and 6.
 - [ ] User Profile display page (`/profile`) with activity calendar and Top Skills
 
 Blockers
@@ -94,6 +93,7 @@ Phase History
 - Phase 1 — status: completed
 - Phase 2 — status: completed
 - Phase 3 — status: completed (corrections applied, 71/71 tests passing)
-- Phase 4 — status: not started
-- Phase 5 — status: not started
+- Phase 4 — status: not started (sub-phases 4A-4D)
+- Phase 5 — status: not started (was old Phase 4: Career & Interviews)
+- Phase 6 — status: not started (was old Phase 5: Community & Launch)
 

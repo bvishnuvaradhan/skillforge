@@ -312,21 +312,10 @@ NEXTAUTH_URL=
 
 ## Current Build Phase
 
-**Phase 1 — Foundation**
+Current Build Phase: Phase 4A
+Scope: Roadmaps restructure. Renaming /worlds to /roadmaps (7 Part cards, Part 1 active, Parts 2-7 static "Coming Soon"). Full language adaptation (C/C++/Java/Python/JS) across lessons, games, and problems. New boss battle system: 3 lives total per battle, 3 levels (Quiz → Matching/Interactive → Boss Fight with animated monster + code editor + timer). Refining Modules 1,3,4,6 games and building Module 2's new game. See SkillForge_PhasePlan.docx (v2) and SkillForge_Curriculum.docx for full detail.
 
-Currently building:
-- Monorepo setup with Turborepo
-- NestJS backend scaffold
-- Next.js frontend scaffold
-- PostgreSQL + Prisma setup
-- Auth system (register, login, OAuth, JWT, refresh tokens)
-- Redis for token blacklist and rate limiting
-- Onboarding flow (6 steps)
-- CI/CD pipeline on GitHub Actions
-- Staging deployment on Railway + Vercel
-
-Do not build Phase 2 features until all Phase 1 checklist items are complete.
-Full phase plan in SkillForge_PhasePlan.docx.
+Do not build Phase 4B, 4C, 4D, or any Phase 5/6 features until all Phase 4A checklist items in SkillForge_PhasePlan.docx are complete and ticked.
 
 ---
 
