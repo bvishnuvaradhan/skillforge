@@ -49,6 +49,35 @@ export class AuthService {
     });
 
     if (existingUser) {
+      if (existingUser.status === 'invited') {
+        // Upgrade shell account
+        const saltRounds = 12;
+        const passwordHash = await bcrypt.hash(dto.password, saltRounds);
+
+        const upgradedUser = await prisma.user.update({
+          where: { id: existingUser.id },
+          data: {
+            name: dto.name,
+            passwordHash,
+            status: 'active',
+          },
+        });
+
+        const tokens = await this.generateTokens(upgradedUser);
+
+        return {
+          user: {
+            id: upgradedUser.id,
+            name: upgradedUser.name,
+            email: upgradedUser.email,
+            role: upgradedUser.role,
+            plan: upgradedUser.plan,
+            onboardingComplete: upgradedUser.onboardingComplete,
+          },
+          ...tokens,
+        };
+      }
+
       throw new ConflictException({
         success: false,
         error: {
@@ -70,6 +99,7 @@ export class AuthService {
         passwordHash,
         role: dto.role as Role,
         plan: Plan.free,
+        status: 'active',
       },
     });
 
