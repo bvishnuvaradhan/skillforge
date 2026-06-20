@@ -30,6 +30,20 @@ export class JwtStrategy extends PassportStrategy(Strategy, 'jwt') {
   }
 
   async validate(req: Request, payload: { sub: string; email: string; role: string }) {
+    if (payload && payload.sub) {
+      const isSuspended = await this.redisService.exists(`blacklist:user:${payload.sub}`);
+      if (isSuspended) {
+        throw new UnauthorizedException({
+          success: false,
+          error: {
+            code: 'SUSPENDED',
+            message: 'User account has been suspended',
+            details: {},
+          },
+        });
+      }
+    }
+
     const token = extractJwtFromCookieOrHeader(req);
     
     // Check if the current token is blacklisted in Redis (user logged out)

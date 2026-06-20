@@ -122,6 +122,17 @@ export class AuthService {
       });
     }
 
+    if (user.status === 'suspended') {
+      throw new UnauthorizedException({
+        success: false,
+        error: {
+          code: 'SUSPENDED',
+          message: 'Your account has been suspended',
+          details: {},
+        },
+      });
+    }
+
     const isPasswordValid = await bcrypt.compare(dto.password, user.passwordHash);
     if (!isPasswordValid) {
       throw new UnauthorizedException({
@@ -197,6 +208,17 @@ export class AuthService {
 
       if (!user) {
         throw new UnauthorizedException();
+      }
+
+      if (user.status === 'suspended') {
+        throw new UnauthorizedException({
+          success: false,
+          error: {
+            code: 'SUSPENDED',
+            message: 'Your account has been suspended',
+            details: {},
+          },
+        });
       }
 
       // Issue new access and refresh tokens

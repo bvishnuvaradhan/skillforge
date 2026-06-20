@@ -16,6 +16,7 @@ import { MentorModule } from './mentor-ai/mentor.module';
 import { InterviewsModule } from './interviews/interviews.module';
 import { CareerModule } from './career/career.module';
 import { ExamsModule } from './exams/exams.module';
+import { AdminModule } from './admin/admin.module';
 import { ScheduleModule } from '@nestjs/schedule';
 
 @Module({
@@ -36,6 +37,7 @@ import { ScheduleModule } from '@nestjs/schedule';
     InterviewsModule,
     CareerModule,
     ExamsModule,
+    AdminModule,
   ],
   controllers: [AppController],
   providers: [AppService],
