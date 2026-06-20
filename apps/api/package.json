@@ -30,6 +30,7 @@
     "@nestjs/websockets": "^11.1.26",
     "@skillforge/db": "*",
     "@skillforge/types": "*",
+    "acorn": "^8.17.0",
     "bcrypt": "^6.0.0",
     "bullmq": "^5.78.0",
     "cookie-parser": "^1.4.7",

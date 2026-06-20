@@ -18,6 +18,7 @@ import { CareerModule } from './career/career.module';
 import { ExamsModule } from './exams/exams.module';
 import { AdminModule } from './admin/admin.module';
 import { InstitutionsModule } from './institutions/institutions.module';
+import { CommunityModule } from './community/community.module';
 import { ScheduleModule } from '@nestjs/schedule';
 
 @Module({
@@ -40,6 +41,7 @@ import { ScheduleModule } from '@nestjs/schedule';
     ExamsModule,
     AdminModule,
     InstitutionsModule,
+    CommunityModule,
   ],
   controllers: [AppController],
   providers: [AppService],

@@ -10,6 +10,7 @@ import { EventsGateway } from '../common/events.gateway';
 import { RedisService } from '../auth/redis.service';
 import { CodeRunnerService } from './code-runner.service';
 import { PRACTICE_PROBLEMS } from '../worlds/worlds.service';
+import { checkSimilarity } from '../common/ast-similarity';
 
 const SESSION_TTL = 3600; // 1 hour session TTL in seconds
 
@@ -395,6 +396,49 @@ export class BossSessionService {
           attemptNumber: prevAttempts + 1,
         },
       });
+
+      // Run AST plagiarism similarity check against other users' passed submissions
+      try {
+        const otherAttempts = await prisma.bossAttempt.findMany({
+          where: {
+            bossId: session.bossId,
+            userId: { not: session.userId },
+            passed: true,
+          },
+          select: {
+            userId: true,
+            answers: true,
+            user: {
+              select: {
+                name: true,
+              },
+            },
+          },
+        });
+
+        for (const other of otherAttempts) {
+          const otherAnswers = other.answers as any;
+          const otherCode = otherAnswers?.code;
+          if (typeof otherCode === 'string') {
+            const simResult = checkSimilarity(code, otherCode, language);
+            if (simResult.isSubstantial && simResult.similarity >= 0.85) {
+              await prisma.report.create({
+                data: {
+                  reporterId: session.userId,
+                  targetType: 'USER',
+                  targetId: session.userId,
+                  reason: `[SYSTEM: PLAGIARISM DETECTED] Code submission for Boss Battle '${boss.name}' (Level 3) has an AST similarity of ${(simResult.similarity * 100).toFixed(1)}% with user '${other.user.name}' (${other.userId}).`,
+                  status: 'pending',
+                },
+              });
+              break;
+            }
+          }
+        }
+      } catch (err) {
+        // Log error internally but do not fail the submission flow
+        console.error('Error during AST similarity check:', err);
+      }
 
       // Award XP
       await prisma.userWorldProgress.upsert({
