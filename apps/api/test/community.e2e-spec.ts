@@ -86,13 +86,25 @@ describe('CommunityController (e2e)', () => {
     });
 
     it('should prevent joining a team if already in one', async () => {
-      await request(app.getHttpServer())
-        .post('/community/teams/join')
-        .set('Cookie', studentCookie)
-        .send({
-          inviteCode: 'some-random-invite-code',
-        })
-        .expect(400);
+      // Create a temporary second team with a valid invite code
+      const secondTeam = await prisma.team.create({
+        data: {
+          name: `Beta Squad ${uniqueId}`,
+          inviteCode: `beta-${uniqueId}`,
+        },
+      });
+
+      try {
+        await request(app.getHttpServer())
+          .post('/community/teams/join')
+          .set('Cookie', studentCookie)
+          .send({
+            inviteCode: secondTeam.inviteCode,
+          })
+          .expect(400);
+      } finally {
+        await prisma.team.delete({ where: { id: secondTeam.id } });
+      }
     });
 
     it('should retrieve active team dashboard details', async () => {
