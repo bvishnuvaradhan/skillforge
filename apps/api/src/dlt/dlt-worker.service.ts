@@ -7,7 +7,7 @@ import { RoadmapService } from '../roadmap/roadmap.service';
 
 export interface DltJobPayload {
   userId: string;
-  eventType: 'game_attempt' | 'boss_attempt' | 'lesson_complete';
+  eventType: 'game_attempt' | 'boss_attempt' | 'lesson_complete' | 'interview_attempt' | 'exam_attempt';
   topicTags: string[];
   score: number; // 0.0–1.0
   xpEarned: number;
@@ -91,107 +91,138 @@ export class DltWorkerService implements OnModuleInit, OnModuleDestroy {
   }
 
   private async processDltUpdate(data: DltJobPayload): Promise<void> {
-    const { userId, topicTags, score, xpEarned, eventType } = data;
-
-    // 1. Update mastery scores for each topic
-    for (const topicId of topicTags) {
-      const existing = await prisma.masteryScore.findFirst({ where: { userId, topicId } });
-
-      const gameScore = eventType === 'game_attempt' ? score : (existing?.gameScore ?? 0);
-      const assessmentScore = existing?.assessmentScore ?? 0;
-
-      // Mastery formula from agents.md
-      const newMastery = Math.min(
-        1.0,
-        WEIGHTS.game * gameScore +
-          WEIGHTS.assessment * assessmentScore +
-          WEIGHTS.coding * (existing?.codingScore ?? 0) +
-          WEIGHTS.interview * (existing?.interviewScore ?? 0) +
-          WEIGHTS.retention * (existing?.retentionScore ?? 0),
-      );
-
-      if (existing) {
-        await prisma.masteryScore.update({
-          where: { id: existing.id },
-          data: {
-            score: newMastery,
-            gameScore: eventType === 'game_attempt' ? Math.max(gameScore, existing.gameScore) : existing.gameScore,
-            lastActivityAt: new Date(),
-          },
-        });
-      } else {
-        await prisma.masteryScore.create({
-          data: {
-            userId,
-            topicId,
-            score: newMastery,
-            gameScore: eventType === 'game_attempt' ? score : 0,
-            assessmentScore: 0,
-            codingScore: 0,
-            interviewScore: 0,
-            retentionScore: 0,
-            lastActivityAt: new Date(),
-          },
-        });
-      }
-    }
-
-    // 2. Update DLT state (XP, level, overall mastery)
-    const allScores = await prisma.masteryScore.findMany({ where: { userId } });
-    const overallMastery =
-      allScores.length > 0
-        ? allScores.reduce((sum, s) => sum + s.score, 0) / allScores.length
-        : 0;
-
-    const dlt = await prisma.dltState.findUnique({ where: { userId } });
-    const newXp = (dlt?.xpTotal ?? 0) + xpEarned;
-    const newLevel = Math.floor(newXp / 1000) + 1;
-
-    const updatedDlt = await prisma.dltState.upsert({
-      where: { userId },
-      update: {
-        overallMastery,
-        xpTotal: newXp,
-        level: newLevel,
-        lastComputedAt: new Date(),
-      },
-      create: {
-        userId,
-        overallMastery,
-        xpTotal: newXp,
-        level: newLevel,
-      },
-    });
-
-    // 3. Streak tracking
-    await this.updateStreak(userId);
-
-    // 4. World unlock evaluation
-    await this.evaluateWorldUnlocks(userId, overallMastery);
-
-    // 5. Invalidate Redis cache
-    await this.redisService.del(`dlt:${userId}`);
-
-    // 5.5 Regenerate roadmap based on updated DLT
     try {
-      const user = await prisma.user.findUnique({
-        where: { id: userId },
-        select: { primaryGoal: true },
-      });
-      if (user && user.primaryGoal) {
-        await this.roadmapService.regenerateRoadmap(userId, user.primaryGoal);
-      }
-    } catch (err) {
-      this.logger.error(`Failed to regenerate roadmap for user ${userId}:`, err);
-    }
+      const { userId, topicTags, score, xpEarned, eventType } = data;
 
-    // 6. Emit dlt_updated socket event
-    this.eventsGateway.emitDltUpdated(userId, {
-      overall_mastery: updatedDlt.overallMastery,
-      xp_total: updatedDlt.xpTotal,
-      level: updatedDlt.level,
-      topic_tags: topicTags,
-    });
+      // Check if user exists (handles rapid test cleanup cases)
+      const userExists = await prisma.user.findUnique({ where: { id: userId } });
+      if (!userExists) {
+        this.logger.warn(`User ${userId} no longer exists. Skipping DLT update.`);
+        return;
+      }
+
+      // 1. Update mastery scores for each topic
+      for (const topicId of topicTags) {
+        const existing = await prisma.masteryScore.findFirst({ where: { userId, topicId } });
+
+        const gameScore = eventType === 'game_attempt'
+          ? Math.max(score, existing?.gameScore ?? 0)
+          : (existing?.gameScore ?? 0);
+        const assessmentScore = eventType === 'exam_attempt'
+          ? Math.max(score, existing?.assessmentScore ?? 0)
+          : (existing?.assessmentScore ?? 0);
+        const codingScore = existing?.codingScore ?? 0;
+        const interviewScore = eventType === 'interview_attempt'
+          ? Math.max(score, existing?.interviewScore ?? 0)
+          : (existing?.interviewScore ?? 0);
+        const retentionScore = existing?.retentionScore ?? 0;
+
+        // Mastery formula from agents.md
+        const newMastery = Math.min(
+          1.0,
+          WEIGHTS.game * gameScore +
+            WEIGHTS.assessment * assessmentScore +
+            WEIGHTS.coding * codingScore +
+            WEIGHTS.interview * interviewScore +
+            WEIGHTS.retention * retentionScore,
+        );
+
+        if (existing) {
+          await prisma.masteryScore.update({
+            where: { id: existing.id },
+            data: {
+              score: newMastery,
+              gameScore,
+              assessmentScore,
+              interviewScore,
+              lastActivityAt: new Date(),
+            },
+          });
+        } else {
+          await prisma.masteryScore.create({
+            data: {
+              userId,
+              topicId,
+              score: newMastery,
+              gameScore: eventType === 'game_attempt' ? score : 0,
+              assessmentScore: eventType === 'exam_attempt' ? score : 0,
+              codingScore: 0,
+              interviewScore: eventType === 'interview_attempt' ? score : 0,
+              retentionScore: 0,
+              lastActivityAt: new Date(),
+            },
+          });
+        }
+      }
+
+      // 2. Update DLT state (XP, level, overall mastery)
+      const allScores = await prisma.masteryScore.findMany({ where: { userId } });
+      const overallMastery =
+        allScores.length > 0
+          ? allScores.reduce((sum, s) => sum + s.score, 0) / allScores.length
+          : 0;
+
+      const dlt = await prisma.dltState.findUnique({ where: { userId } });
+      const newXp = (dlt?.xpTotal ?? 0) + xpEarned;
+      const newLevel = Math.floor(newXp / 1000) + 1;
+
+      const updatedDlt = await prisma.dltState.upsert({
+        where: { userId },
+        update: {
+          overallMastery,
+          xpTotal: newXp,
+          level: newLevel,
+          lastComputedAt: new Date(),
+        },
+        create: {
+          userId,
+          overallMastery,
+          xpTotal: newXp,
+          level: newLevel,
+        },
+      });
+
+      // 3. Streak tracking
+      await this.updateStreak(userId);
+
+      // 4. World unlock evaluation
+      await this.evaluateWorldUnlocks(userId, overallMastery);
+
+      // 5. Invalidate Redis cache
+      await this.redisService.del(`dlt:${userId}`);
+
+      // 5.5 Regenerate roadmap based on updated DLT
+      try {
+        const user = await prisma.user.findUnique({
+          where: { id: userId },
+          select: { primaryGoal: true },
+        });
+        if (user && user.primaryGoal) {
+          await this.roadmapService.regenerateRoadmap(userId, user.primaryGoal);
+        }
+      } catch (err) {
+        this.logger.error(`Failed to regenerate roadmap for user ${userId}:`, err);
+      }
+
+      // 6. Emit dlt_updated socket event
+      this.eventsGateway.emitDltUpdated(userId, {
+        overall_mastery: updatedDlt.overallMastery,
+        xp_total: updatedDlt.xpTotal,
+        level: updatedDlt.level,
+        topic_tags: topicTags,
+      });
+    } catch (err: any) {
+      if (
+        err.code === 'P2003' ||
+        err.message?.includes('Foreign key') ||
+        err.message?.includes('not found') ||
+        err.message?.includes('violates foreign key constraint')
+      ) {
+        this.logger.warn(`User was deleted during DLT update processing: ${err.message}`);
+      } else {
+        throw err;
+      }
+    }
   }
 
   private async updateStreak(userId: string): Promise<void> {

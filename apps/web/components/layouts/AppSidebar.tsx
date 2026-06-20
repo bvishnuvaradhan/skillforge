@@ -4,7 +4,7 @@ import Link from "next/link";
 import { usePathname } from "next/navigation";
 import {
   LayoutDashboard,
-  Globe2,
+  Map,
   Gamepad2,
   Brain,
   Users,
@@ -12,11 +12,14 @@ import {
   LogOut,
   Zap,
 } from "lucide-react";
+import { useRouter } from "next/navigation";
+import { logoutUser } from "../../lib/auth";
+import { toast } from "sonner";
 import { clsx } from "clsx";
 
 const navItems = [
   { href: "/dashboard", icon: LayoutDashboard, label: "Dashboard" },
-  { href: "/worlds", icon: Globe2, label: "Worlds" },
+  { href: "/roadmaps", icon: Map, label: "Roadmaps" },
   { href: "/practice", icon: Gamepad2, label: "Practice" },
   { href: "/memory", icon: Brain, label: "Memory Lab" },
   { href: "/community", icon: Users, label: "Community" },
@@ -28,9 +31,21 @@ const bottomItems = [
 
 export function AppSidebar() {
   const pathname = usePathname();
+  const router = useRouter();
 
   const isActive = (href: string) =>
     pathname === href || pathname.startsWith(href + "/");
+
+  const handleLogout = async () => {
+    try {
+      await logoutUser();
+      toast.success("Logged out successfully");
+      router.push("/login");
+      router.refresh();
+    } catch (err: any) {
+      toast.error(err.message || "Failed to log out");
+    }
+  };
 
   return (
     <aside className="fixed left-0 top-0 h-full w-64 bg-bg-secondary border-r border-border flex flex-col z-40">
@@ -84,7 +99,7 @@ export function AppSidebar() {
         ))}
         <button
           className="w-full flex items-center gap-3 px-3 py-2.5 rounded-lg text-sm font-medium text-text-secondary hover:text-accent-red hover:bg-accent-red/10 transition-all duration-200"
-          onClick={() => {/* TODO: logout */}}
+          onClick={() => void handleLogout()}
         >
           <LogOut className="w-4 h-4 shrink-0" />
           Sign Out

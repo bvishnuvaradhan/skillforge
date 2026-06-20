@@ -1,7 +1,7 @@
 SkillForge — Project Status
-Last updated: June 12, 2026
-Current phase: Phase 4A — Roadmaps Restructure (not started)
-Overall progress: Phase 3 of 6 complete
+Last updated: June 20, 2026
+Current phase: Phase 6 — not started
+Overall progress: Phases 1–5 complete, Phase 6 not started
 
 Phase 1 — Foundation
 Completed
@@ -56,44 +56,88 @@ Phase 3 Corrections (applied post-review):
 - [x] Correction 3: AI model system — upgraded to full 4+4 model selection (gemini-2.5-flash / qwen-3 / llama-4-scout / deepseek-r1-free for free; deepseek-r1-groq / llama-3.3-70b-groq / deepseek-v3 / qwen-3-pro for premium); added enum validation on selectedModel API field
 - [x] BullMQ teardown fix — resolved unhandled 'Connection is closed' ioredis error in DltWorkerService and ProfileSyncService onModuleDestroy; fixed OAuth e2e testApp teardown race; added forceExit to jest-e2e.json
 
-Remaining / Restructuring Progress
-- [x] Step 1: Complete BFS Explorer gameboard (P0)
-- [x] Step 2: Complete DFS Adventure gameboard (P0)
-- [x] Step 3: Complete Recursion Maze gameboard (P0)
-- [x] Step 4: Add Array Arena, Function Fortress, Recursion Caverns to seed.ts (P0)
-- [x] Step 5: Language track system — schema & onboarding & filtering
-- [x] Step 6: Expand lesson content in seed.ts for all worlds and all 4 languages
-- [x] Step 7: Platform profile verification on link
-- [x] Step 8: Fast track unlock in onboarding.service.ts
-- [x] Step 9: Update free vs premium gates — remove incorrect 402 gates, enforce correct ones
-- [x] Step 10: AI Model Selection System & routing fallback (4+4 model system)
-- [x] Step 11: Boss battle progressive cooldown system
-- [x] Step 12: World victory screen and progression flow
-- [x] Step 13: Locked world prerequisite modal
-- [x] Step 14: Memory Lab service & nightly scheduler
-- [x] Step 15: Recommendation engine & arbitrator
-- [x] Step 16: Roadmap regeneration via Neo4j
-- [x] Step 17: AI Mentor with limits and custom system prompt
-- [x] Step 18: Skill DNA computation
-- [x] Step 19: Forecasting engine
-- [x] Step 20: Frontend: Memory Lab UI page (heatmap + schedule free for all users)
-- [x] Step 21: Frontend: Roadmap UI page (full timeline, unlimited goal swaps)
-- [x] Step 22: Frontend: AI Mentor floating chat panel (4+4 model selector)
-- [x] Step 23: Frontend: Updated dashboard with Phase 3 widgets
-- [x] Step 24: Frontend: Practice hub + Monaco editor
-- [x] Step 25: Frontend: Blockly editor component
-- [ ] See SkillForge_PhasePlan.docx v2 for details on remaining tasks in Phase 4, 5, and 6.
-- [ ] User Profile display page (`/profile`) with activity calendar and Top Skills
+Phase 4A — Roadmaps Restructure + Boss Redesign + Modules 1–4
+Completed ✅ (78/78 tests passing)
+
+- [x] Step 1: Roadmaps page live — /roadmaps shows 7 Part cards; Part 1 clickable, Parts 2-7 static Coming Soon
+- [x] Step 2: Language adaptation working — C/C++/Java/Python/JS changes lessons, examples, and games
+- [x] Step 3: New boss structure implemented — 3 lives total, 3 levels (Quiz → Matching → Boss Fight), restart-from-L1 on 0 lives
+- [x] Step 4: Boss Fight level (L3) working — animated monster + code editor + timer; correct code damages monster
+- [x] Step 5: Timeout handling correct — timer loss costs 1 life, retries same problem, partial code preserved in Redis
+- [x] Step 6: Modules 1, 3, 4, 6 refined — existing games fully language-adapted across all 5 languages
+- [x] Step 7: Module 2 game built — new I/O Stream Matching game complete and playable
+- [x] Step 8: Problems sections live — Original + External problem lists shown separately for Modules 1–4
+- [x] Step 9: World gating enforced — server-side guard on completeProblem (403 PREREQUISITES_NOT_MET) and startSession (403 BOSS_LOCKED); both verified with E2E tests
+- [x] Step 10: Bug fixes — null userTrack fallback, getMonacoLanguage reference fix, boss.questions.map crash fix (JSONB structure mismatch)
+
+Phase 4A Result:
+78/78 E2E tests passing across 8 suites. Boss battle gating is fully server-side enforced. A student must complete all lessons + game + both problem types before the boss is unlocked. Losing all 3 lives restarts from Level 1.
+
+Phase 4B — Game 2 (Modules 1-4) & Game 1 (Modules 5, 8, 9) Refinements
+Completed ✅
+
+- [x] Build Game 1 & 2 for Module 5 (Function Workshop, Black Box Factory)
+- [x] Build Game 2 for Module 6 (Mirror Halls)
+- [x] Build Game 1 for Module 8 (Bug Hunt)
+- [x] Build Game 1 for Module 9 (Object Foundry)
+- [x] Update database seed data and validation logic
+
+Phase 4C — Game Expansion (Modules 7, 8, 9, 10)
+Completed ✅ (94/94 tests passing)
+
+- [x] Wire & Register (wire_register — Module 7, Game 1): Pointer routing simulator with backend state-machine evaluation
+- [x] Heap Heist (heap_heist — Module 7, Game 2): Dynamic memory allocator/GC dashboard with pointer-to-block linking and leak prevention
+- [x] Test Case Tower (test_case_tower — Module 8, Game 2): Branch coverage puzzle requiring 1–3 test cases covering all branches
+- [x] Constructor Chain (constructor_chain — Module 9, Game 2): Drag-and-drop constructor call ordering chain
+- [x] Shape Shifter Arena (shape_shifter_arena — Module 10, Game 1): Polymorphic subclass dispatcher graded on exact slot assignments and call sequence
+- [x] Backend evaluation logic implemented in games.service.ts for all 5 games
+- [x] Frontend React components built and routed in roadmaps/[slug]/game/[id]/page.tsx
+- [x] E2E integration tests added to learning-loop.e2e-spec.ts (pass + fail states for each game)
+- [x] Infrastructure fix: --runInBand baked into test:e2e script in apps/api/package.json
+
+Phase 4C Result:
+94/94 E2E tests passing across 8 suites. Browser + API walkthrough confirmed: all 5 games verified fail (score=0.2, xp=0) and pass (score=1.0, full XP) states. XP per game: Wire & Register +80, Heap Heist +85, Test Case Tower +90, Constructor Chain +90, Shape Shifter Arena +95 (440 XP total). Wire & Register uses a backend state-machine simulation; Test Case Tower uses hardcoded branch condition evaluators; Mirror Halls' safeEval limitations documented in PHASE_4_SUMMARY.md.
+
+Phase 4D — Part 1 Completion & Roadmaps Polish
+Completed ✅ (101/101 tests passing)
+
+- [x] Step 1: High-fidelity Coming Soon Roadmaps — replaced the placeholder bullet list with a grid mapping all 128 remaining modules dynamically across Parts 2-7, displaying module ID, name, tech stack, key topics, planned playgrounds, and difficulty stars.
+- [x] Step 2: 7 New Games built — fully implemented backend validation/grading and frontend interactive UI layouts for Vault Keeper, Interface Bridge, Assembly Yard, Pattern Forge, SOLID Foundations, Refactor Run, and Code Review Court.
+- [x] Step 3: E2E Integration tests — added success and fail test assertions for all 7 new games in learning-loop.e2e-spec.ts.
+- [x] Step 4: Browser + API Walkthrough — executed walkthrough verifying fail (0.2 score, 0 XP) and pass (1.0 score, full XP) states for all 7 games, generating 640 XP.
+
+Phase 4D Result:
+101/101 E2E tests passing across 8 suites. Browser + API walkthrough confirmed: all 7 games verified fail (score=0.2, xp=0) and pass (score=1.0, full XP) states. XP per game: Vault Keeper +95, Interface Bridge +85, Assembly Yard +90, Pattern Forge +90, SOLID Foundations +95, Refactor Run +90, Code Review Court +95 (640 XP total). Vault Keeper, Assembly Yard, and Refactor Run verified via interactive browser walkthrough; Interface Bridge, Pattern Forge, SOLID Foundations, and Code Review Court verified via direct API request due to complex dynamic layouts and DOM targeting limitations.
+
+Phase 5 — Career & Interviews
+Completed ✅ (119/119 tests passing)
+
+- [x] Step 1: Database Schema Updates — added new enums and models (InterviewSession, InterviewFeedback, MentorProfile, MentorAvailability, MentorReview, Resume, ResumeScore)
+- [x] Step 2: Interviews Module — implemented endpoints for booking checkout session, Stripe Webhook payment fee splits (85% mentor / 15% platform), and AI mock interview message loop + evaluation (4-dimensions)
+- [x] Step 3: Production bypass payment guardrail — strict check rejecting bypassPayment: true in production env
+- [x] Step 4: Career Module — built resume builder pre-filled template creator, ATS feedback sidebar check (6-dimensions), LinkedIn SEO rewriter, and Company readiness tiers
+- [x] Step 5: Exams Module — implemented exams catalog list, start attempt, adaptive question progression (answer-by-answer difficulty shift), and linear XP rewards
+- [x] Step 6: Socket.io Live Gateway — namespace `/live-interviews` supporting Monaco collaborative synchronization
+- [x] Step 7: Frontend Pages — dashboard, AI mock interview room, evaluation report, collaborative live room, career hub, resume builder, exams catalog, and exam runner
+- [x] Step 8: E2E Integration tests — added interviews.e2e-spec.ts, career.e2e-spec.ts, and exams.e2e-spec.ts (18 new integration tests)
+
+Phase 5 Result:
+119/119 E2E tests passing across 11 suites. Browser walkthrough verified successfully with Puppeteer generating 7 screenshots. Stripe commission split math explicitly verified: price_paid: $120.00 -> mentor credited: $102.00 (85% payout), and platform commission is $18.00 (15%). Adaptive exam run graded score and XP explicitly verified: final score: 14.29%, XP awarded: 17 (denominator = 7.0, points = 1.0). Exams seed data exhaustion and WebRTC live room video streaming limitations documented in PHASE_5_SUMMARY.md.
+
+Remaining / Future Work
+- [ ] User Profile display page (/profile) with activity calendar and Top Skills
 
 Blockers
 - none
 
 Phase History
 
-- Phase 1 — status: completed
-- Phase 2 — status: completed
-- Phase 3 — status: completed (corrections applied, 71/71 tests passing)
-- Phase 4 — status: not started (sub-phases 4A-4D)
-- Phase 5 — status: not started (was old Phase 4: Career & Interviews)
-- Phase 6 — status: not started (was old Phase 5: Community & Launch)
-
+- Phase 1 — status: completed (22/22 tests)
+- Phase 2 — status: completed (49/49 tests)
+- Phase 3 — status: completed, corrections applied (71/71 tests)
+- Phase 4A — status: completed ✅ (78/78 tests, gating verified, all bugs fixed)
+- Phase 4B — status: completed ✅ (Game 1+2 updates verified)
+- Phase 4C — status: completed ✅ (94/94 tests, all 5 games walkthrough-verified)
+- Phase 4D — status: completed ✅ (101/101 tests, all 7 games walkthrough-verified)
+- Phase 5 — status: completed ✅ (119/119 tests, Stripe split payment bypass & adaptive exams walkthrough verified)
+- Phase 6 — status: not started (Community & Launch)

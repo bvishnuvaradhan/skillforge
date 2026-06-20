@@ -59,12 +59,8 @@ export class BossService {
       pass_threshold: boss.passThreshold,
       xp_reward: boss.xpReward,
       requires_human_review: boss.requiresHumanReview,
-      // Only send question text, not answers
-      questions: (boss.questions as Array<Record<string, unknown>>).map((q) => ({
-        id: q.id,
-        text: q.text,
-        options: q.options,
-      })),
+      // Send full structured questions object (level1/level2/level3) — answers stripped in session service
+      questions: boss.questions as Record<string, unknown>,
       badge: boss.badge ? {
         id: boss.badge.id,
         name: boss.badge.name,

@@ -111,7 +111,7 @@ export default function LessonPage() {
       .catch((err) => {
         if (err instanceof ApiError && err.status === 403) {
           toast.error("Lesson locked. Complete prerequisites first.");
-          router.push(`/worlds`);
+          router.push(`/roadmaps`);
         }
       })
       .finally(() => setLoading(false));
@@ -170,11 +170,11 @@ export default function LessonPage() {
   return (
     <div className="p-8 max-w-3xl mx-auto">
       <Link
-        href={`/worlds/${slug}`}
+        href={`/roadmaps/${slug}`}
         className="flex items-center gap-2 text-text-secondary hover:text-white text-sm mb-6 transition-colors"
       >
         <ArrowLeft className="w-4 h-4" />
-        Back to World
+        Back to Module
       </Link>
 
       <motion.article
@@ -216,10 +216,10 @@ export default function LessonPage() {
         <div className="flex justify-end">
           {completed ? (
             <Link
-              href={`/worlds/${slug}`}
+              href={`/roadmaps/${slug}`}
               className="flex items-center gap-2 px-6 py-3 bg-brand-cyan text-bg-primary font-semibold rounded-xl hover:bg-brand-cyan/90 transition-colors"
             >
-              Back to World
+              Back to Module
             </Link>
           ) : (
             <button

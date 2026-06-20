@@ -197,7 +197,7 @@ export default function RoadmapPage() {
                       <div className="mt-4 flex items-center justify-between border-t border-border/60 pt-4">
                         <span className="text-xs text-text-muted">Target is 70% topic mastery score.</span>
                         <a
-                          href={`/worlds`}
+                          href={`/roadmaps`}
                           className="text-xs font-bold text-brand-cyan hover:underline flex items-center gap-1 group/link"
                         >
                           Start lessons

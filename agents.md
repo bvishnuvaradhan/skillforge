@@ -309,14 +309,14 @@ NEXTAUTH_URL=
 ```
 
 ---
-
+ 
 ## Current Build Phase
-
-Current Build Phase: Phase 4A
-Scope: Roadmaps restructure. Renaming /worlds to /roadmaps (7 Part cards, Part 1 active, Parts 2-7 static "Coming Soon"). Full language adaptation (C/C++/Java/Python/JS) across lessons, games, and problems. New boss battle system: 3 lives total per battle, 3 levels (Quiz → Matching/Interactive → Boss Fight with animated monster + code editor + timer). Refining Modules 1,3,4,6 games and building Module 2's new game. See SkillForge_PhasePlan.docx (v2) and SkillForge_Curriculum.docx for full detail.
-
-Do not build Phase 4B, 4C, 4D, or any Phase 5/6 features until all Phase 4A checklist items in SkillForge_PhasePlan.docx are complete and ticked.
-
+ 
+Current Build Phase: Phase 5 — Career & Interviews
+Scope: Implement Mock Interviews (AI-powered and human-reviewed), Resume Builder (auto-filled sections, templates, scoring engine), LinkedIn Optimizer, Career Readiness Engine, Company-specific preparation tracks, Stripe billing integration, and mock exams platform. See SkillForge_PhasePlan.md / SkillForge_PhasePlan.docx and SkillForge_Curriculum.docx for details.
+ 
+Do not build Phase 6 (Community & Launch) features until all Phase 5 checklist items are complete and verified.
+ 
 ---
 
 ## What NOT to Do
@@ -386,7 +386,21 @@ retention(t) = initial_retention * e^(-t / stability)
 - Minimum coverage: 90% on business logic, 80% on API handlers
 - Run tests with: `npm run test` (unit) and `npm run test:e2e` (integration)
 
+### Verification Standard — Non-Negotiable
+
+Every phase's final verification must include a literal browser walkthrough of the user-facing flow before claiming the phase complete. API-level E2E tests are necessary but not sufficient.
+
+A phase is not "verified" until every core user-facing flow has been exercised through the actual rendered browser UI — not via direct API calls, curl, or walkthrough scripts. Specifically:
+
+- Before claiming a phase complete, run through every checklist item by clicking through the real frontend in a browser (localhost dev server is acceptable).
+- For each flow: note the actual network request made, the actual response received, and the actual UI state that results.
+- Screenshot or log the key steps (e.g. "submitted empty code → saw 400 error toast", "completed lesson 3 → progress bar advanced to 60%").
+- If a flow cannot be browser-tested by the agent (e.g. requires a real user session), state this explicitly and flag it for the human to verify — do not mark it as verified.
+
+**Rationale**: The discrepancy between 78/78 E2E tests passing and multiple broken flows in production was caused by tests that validated API contracts in isolation. The frontend was not sending code to `completeProblem`, making the test suite blind to the real data path a student uses. This class of bug — correct API, wrong wiring — is only caught by tracing the full browser-to-backend path.
+
 Full testing strategy in SkillForge_Testing.docx.
+
 
 ---
 

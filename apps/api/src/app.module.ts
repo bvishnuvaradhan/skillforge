@@ -13,6 +13,9 @@ import { MemoryModule } from './memory/memory.module';
 import { RecommendationsModule } from './recommendations/recommendations.module';
 import { RoadmapModule } from './roadmap/roadmap.module';
 import { MentorModule } from './mentor-ai/mentor.module';
+import { InterviewsModule } from './interviews/interviews.module';
+import { CareerModule } from './career/career.module';
+import { ExamsModule } from './exams/exams.module';
 import { ScheduleModule } from '@nestjs/schedule';
 
 @Module({
@@ -30,6 +33,9 @@ import { ScheduleModule } from '@nestjs/schedule';
     RecommendationsModule,
     RoadmapModule,
     MentorModule,
+    InterviewsModule,
+    CareerModule,
+    ExamsModule,
   ],
   controllers: [AppController],
   providers: [AppService],

@@ -16,7 +16,7 @@ const GAME_SUBMISSION_TEMPLATES: Record<string, string[]> = {
   logic_builder: ['blocks', 'connections', 'output_node'],
   ifelse_constructor: ['condition_blocks', 'true_branch', 'false_branch'],
   loop_builder: ['loop_type', 'iteration_count', 'body_blocks'],
-  function_workshop: ['function_name', 'parameters', 'body_blocks', 'return_block'],
+  function_workshop: ['name', 'params', 'return_type', 'body'],
   bfs_explorer: ['start_node', 'visited_order', 'queue_states'],
   dfs_adventure: ['start_node', 'visited_order', 'stack_states'],
   recursion_maze: ['base_case', 'recursive_case', 'call_stack'],
@@ -24,6 +24,26 @@ const GAME_SUBMISSION_TEMPLATES: Record<string, string[]> = {
   dp_builder: ['states', 'transitions', 'base_cases'],
   graph_puzzle: ['nodes', 'edges', 'traversal_path'],
   greedy_arena: ['choices', 'greedy_criterion', 'result_sequence'],
+  type_sorter: ['matches'],
+  echo_chamber: ['output_matches'],
+  switchboard: ['routes'],
+  factory_line: ['loop_config', 'actions'],
+  black_box_factory: ['operations'],
+  mirror_halls: ['base_condition', 'base_return', 'reduction_arg'],
+  bug_hunt: ['buggy_line', 'variable_traces'],
+  object_foundry: ['attributes', 'instantiations'],
+  wire_register: ['connections'],
+  heap_heist: ['allocations', 'freed'],
+  test_case_tower: ['test_cases'],
+  constructor_chain: ['chain'],
+  shape_shifter_arena: ['assignments', 'calls'],
+  vault_keeper: ['modifiers', 'access'],
+  interface_bridge: ['mappings', 'methods'],
+  assembly_yard: ['relationships'],
+  pattern_forge: ['roles'],
+  solid_foundations: ['violations', 'resolutions'],
+  refactor_run: ['actions'],
+  code_review_court: ['reviews'],
 };
 
 @Injectable()
@@ -120,8 +140,19 @@ export class GamesService {
       }
     }
 
+    const userDetails = await prisma.user.findUnique({
+      where: { id: userId },
+      select: { languageTrack: true },
+    });
+    const languageTrack = userDetails?.languageTrack ?? 'JAVASCRIPT';
+
     // Calculate score based on submission quality (structural evaluation)
-    const score = this.evaluateSubmission(game.gameType, submission, game.config as Record<string, unknown>);
+    const score = this.evaluateSubmission(
+      game.gameType,
+      submission,
+      game.config as Record<string, unknown>,
+      languageTrack,
+    );
     const passed = score >= 0.6;
 
     // Check if user has already passed or attempted this game before to prevent duplicate XP
@@ -229,6 +260,7 @@ export class GamesService {
     gameType: string,
     submission: Record<string, unknown>,
     config: Record<string, unknown>,
+    languageTrack: string = 'JAVASCRIPT',
   ): number {
     const requiredKeys = GAME_SUBMISSION_TEMPLATES[gameType] ?? [];
     if (requiredKeys.length === 0) return 0.7;
@@ -338,9 +370,466 @@ export class GamesService {
         return isValid ? 1.0 : 0.2;
       }
 
+      case 'type_sorter': {
+        const matches = (submission.matches as Record<string, string>) || {};
+        const items = (config.items as Array<{ id: string; types: Record<string, string> }>) || [];
+        if (items.length === 0) return 0.2;
+
+        let allCorrect = true;
+        for (const item of items) {
+          const expected = item.types[languageTrack] || item.types['JAVASCRIPT'];
+          const actual = matches[item.id];
+          if (actual !== expected) {
+            allCorrect = false;
+            break;
+          }
+        }
+        return allCorrect ? 1.0 : 0.2;
+      }
+
+      case 'echo_chamber': {
+        const outputMatches = (submission.output_matches as Record<string, string>) || {};
+        const puzzles = (config.puzzles as Record<string, Record<string, Array<{ id: string; output: string }>>>) || {};
+        const list = (puzzles[languageTrack] || puzzles['JAVASCRIPT'] || []) as Array<{ id: string; output: string }>;
+        if (list.length === 0) return 0.2;
+
+        let allCorrect = true;
+        for (const puzzle of list) {
+          if (outputMatches[puzzle.id] !== puzzle.output) {
+            allCorrect = false;
+            break;
+          }
+        }
+        return allCorrect ? 1.0 : 0.2;
+      }
+
+      case 'switchboard': {
+        const routes = (submission.routes as Record<string, string>) || {};
+        const inputs = (config.inputs as Array<{ value: string; target: string }>) || [];
+        if (inputs.length === 0) return 0.2;
+
+        let allCorrect = true;
+        for (const input of inputs) {
+          if (routes[input.value] !== input.target) {
+            allCorrect = false;
+            break;
+          }
+        }
+        return allCorrect ? 1.0 : 0.2;
+      }
+
+      case 'factory_line': {
+        const loopConfig = (submission.loop_config as { start?: unknown; end?: unknown; step?: unknown }) || {};
+        const actions = Array.isArray(submission.actions) ? (submission.actions as string[]) : [];
+
+        const start = Number(loopConfig.start ?? 0);
+        const end = Number(loopConfig.end ?? 0);
+        const step = Number(loopConfig.step ?? 0);
+
+        const expectedIterations = Number(config.expected_iterations ?? 5);
+        const expectedActions = (config.expected_actions as string[]) || [];
+
+        const iterations = step > 0 ? Math.max(0, Math.ceil((end - start) / step)) : 0;
+
+        const boundsValid = iterations === expectedIterations;
+        const actionsValid = JSON.stringify(actions) === JSON.stringify(expectedActions);
+
+        return boundsValid && actionsValid ? 1.0 : 0.2;
+      }
+
+      case 'function_workshop': {
+        const name = String(submission.name ?? '').trim();
+        const returnType = String(submission.return_type ?? '').trim();
+        const params = Array.isArray(submission.params) ? submission.params : [];
+        const body = Array.isArray(submission.body) ? submission.body : [];
+
+        const expectedName = String(config.expected_name ?? '');
+        const expectedReturnType = String(config.expected_return_type ?? '');
+        const expectedParams = Array.isArray(config.expected_params) ? config.expected_params : [];
+        const expectedBody = Array.isArray(config.expected_body) ? config.expected_body : [];
+
+        const nameValid = name.toLowerCase() === expectedName.toLowerCase();
+        const returnValid = returnType.toLowerCase() === expectedReturnType.toLowerCase();
+
+        let paramsValid = params.length === expectedParams.length;
+        if (paramsValid) {
+          for (let i = 0; i < params.length; i++) {
+            const p = params[i] as { name?: string; type?: string };
+            const ep = expectedParams[i] as { name?: string; type?: string };
+            if (p.name?.trim() !== ep.name?.trim() || p.type?.trim() !== ep.type?.trim()) {
+              paramsValid = false;
+              break;
+            }
+          }
+        }
+
+        const bodyValid = JSON.stringify(body) === JSON.stringify(expectedBody);
+
+        return nameValid && returnValid && paramsValid && bodyValid ? 1.0 : 0.2;
+      }
+
+      case 'black_box_factory': {
+        const operations = Array.isArray(submission.operations) ? submission.operations : [];
+        const expectedOperations = Array.isArray(config.expected_operations) ? config.expected_operations : [];
+        return JSON.stringify(operations) === JSON.stringify(expectedOperations) ? 1.0 : 0.2;
+      }
+
+      case 'mirror_halls': {
+        const baseCondition = String(submission.base_condition ?? '');
+        const baseReturn = String(submission.base_return ?? '').trim();
+        const reductionArg = String(submission.reduction_arg ?? '');
+
+        const cond0 = this.safeEval(baseCondition, 0);
+        const cond1 = this.safeEval(baseCondition, 1);
+        const reductionVal = this.safeEval(reductionArg, 5);
+
+        const expectedBaseReturn = String(config.expected_base_return ?? '1').trim();
+
+        const condValid = cond0 === true && cond1 === false;
+        const returnValid = baseReturn === expectedBaseReturn;
+        const reductionValid = reductionVal === 4;
+
+        return condValid && returnValid && reductionValid ? 1.0 : 0.2;
+      }
+
+      case 'bug_hunt': {
+        const buggyLine = Number(submission.buggy_line ?? 0);
+
+        const puzzles = (config.puzzles as Record<string, { buggy_line: number }>) || {};
+        const puzzle = puzzles[languageTrack] || puzzles['JAVASCRIPT'] || { buggy_line: 3 };
+
+        return buggyLine === puzzle.buggy_line ? 1.0 : 0.2;
+      }
+
+      case 'object_foundry': {
+        const attributes = Array.isArray(submission.attributes) ? submission.attributes : [];
+        const instantiations = Array.isArray(submission.instantiations) ? submission.instantiations : [];
+
+        const expectedAttributes = Array.isArray(config.expected_attributes) ? config.expected_attributes : [];
+        const targetSpecs = Array.isArray(config.target_specs) ? config.target_specs as Array<{ color: string; price: number }> : [];
+
+        let attrsValid = attributes.length === expectedAttributes.length;
+        if (attrsValid) {
+          for (let i = 0; i < attributes.length; i++) {
+            const a = attributes[i] as { name?: string; type?: string };
+            const ea = expectedAttributes[i] as { name?: string; type?: string };
+            if (a.name?.trim() !== ea.name?.trim() || a.type?.trim() !== ea.type?.trim()) {
+              attrsValid = false;
+              break;
+            }
+          }
+        }
+
+        let instsValid = instantiations.length === targetSpecs.length;
+        if (instsValid) {
+          for (let i = 0; i < targetSpecs.length; i++) {
+            const inst = instantiations[i] as { args?: unknown[] };
+            const spec = targetSpecs[i];
+            if (!spec) {
+              instsValid = false;
+              break;
+            }
+            const args = Array.isArray(inst.args) ? inst.args : [];
+
+            if (args.length < 2) {
+              instsValid = false;
+              break;
+            }
+
+            const argColor = String(args[0] ?? '').replace(/['"]/g, '').trim();
+            const argPrice = Number(args[1] ?? 0);
+
+            if (argColor !== spec.color || argPrice !== spec.price) {
+              instsValid = false;
+              break;
+            }
+          }
+        }
+
+        return attrsValid && instsValid ? 1.0 : 0.2;
+      }
+
+      case 'wire_register': {
+        const connections = Array.isArray(submission.connections) ? (submission.connections as Array<{ from: string; to: string }>) : [];
+        const state: { INPUT: number; SP: number; OUTPUT_A: number; RAM: Record<number, number> } = { INPUT: 42, SP: 0, OUTPUT_A: 0, RAM: { 42: 99 } };
+        let changed = true;
+        let iterations = 0;
+        while (changed && iterations < 10) {
+          changed = false;
+          iterations++;
+          for (const conn of connections) {
+            let value = 0;
+            if (conn.from === 'INPUT') {
+              value = state.INPUT;
+            } else if (conn.from === 'SP') {
+              value = state.SP;
+            } else if (conn.from === 'RAM[SP]') {
+              value = state.RAM[state.SP] || 0;
+            }
+
+            if (conn.to === 'SP') {
+              if (state.SP !== value) {
+                state.SP = value;
+                changed = true;
+              }
+            } else if (conn.to === 'OUTPUT_A') {
+              if (state.OUTPUT_A !== value) {
+                state.OUTPUT_A = value;
+                changed = true;
+              }
+            }
+          }
+        }
+        return state.OUTPUT_A === 99 ? 1.0 : 0.2;
+      }
+
+      case 'heap_heist': {
+        const allocations = Array.isArray(submission.allocations) ? submission.allocations : [];
+        const expectedAllocations = Array.isArray(config.expected_allocations) ? config.expected_allocations : [];
+        const freed = Array.isArray(submission.freed) ? submission.freed : [];
+        const expectedFreed = Array.isArray(config.expected_freed) ? config.expected_freed : [];
+
+        let allocsValid = allocations.length === expectedAllocations.length;
+        if (allocsValid) {
+          for (const expected of expectedAllocations) {
+            const found = allocations.find(
+              (a: any) => a.pointer === expected.pointer && a.heap_address === expected.heap_address
+            );
+            if (!found) {
+              allocsValid = false;
+              break;
+            }
+          }
+        }
+
+        let freedValid = freed.length === expectedFreed.length;
+        if (freedValid) {
+          for (const addr of expectedFreed) {
+            if (!freed.includes(addr)) {
+              freedValid = false;
+              break;
+            }
+          }
+        }
+
+        return allocsValid && freedValid ? 1.0 : 0.2;
+      }
+
+      case 'test_case_tower': {
+        const testCases = Array.isArray(submission.test_cases) ? submission.test_cases : [];
+        if (testCases.length === 0 || testCases.length > 3) {
+          return 0.2;
+        }
+
+        const covered = new Set<string>();
+        for (const tc of testCases) {
+          const x = Number(tc.x ?? 0);
+          const y = Number(tc.y ?? 0);
+
+          if (x > 0 && y < 5) {
+            covered.add('Branch A');
+          } else if (x === 0) {
+            covered.add('Branch B');
+          } else {
+            covered.add('Branch C');
+          }
+        }
+
+        const expectedBranches = (config.branches as string[]) || ['Branch A', 'Branch B', 'Branch C'];
+        const allCovered = expectedBranches.every(b => covered.has(b));
+        return allCovered ? 1.0 : 0.2;
+      }
+
+      case 'constructor_chain': {
+        const chain = Array.isArray(submission.chain) ? submission.chain : [];
+        const expectedChain = Array.isArray(config.expected_chain) ? config.expected_chain : [];
+        return JSON.stringify(chain) === JSON.stringify(expectedChain) ? 1.0 : 0.2;
+      }
+
+      case 'shape_shifter_arena': {
+        const assignments = (submission.assignments as Record<string, string>) || {};
+        const calls = Array.isArray(submission.calls) ? submission.calls : [];
+
+        const expectedAssignments = (config.expected_assignments as Record<string, string>) || {};
+        const expectedCalls = Array.isArray(config.expected_calls) ? config.expected_calls : [];
+
+        const assignmentsValid = JSON.stringify(assignments) === JSON.stringify(expectedAssignments);
+        const callsValid = JSON.stringify(calls) === JSON.stringify(expectedCalls);
+
+        return assignmentsValid && callsValid ? 1.0 : 0.2;
+      }
+
+      case 'vault_keeper': {
+        const modifiers = (submission.modifiers as Record<string, string>) || {};
+        const access = (submission.access as Record<string, string>) || {};
+
+        const fields = Array.isArray(config.fields) ? config.fields : [];
+        const methods = Array.isArray(config.methods) ? config.methods : [];
+
+        let allCorrect = true;
+        // Verify fields modifiers and access
+        for (const f of fields) {
+          const expectedModifier = f.expected_modifier;
+          const expectedAccess = f.access;
+          if (modifiers[f.name] !== expectedModifier || access[f.name] !== expectedAccess) {
+            allCorrect = false;
+            break;
+          }
+        }
+        // Verify methods modifiers
+        if (allCorrect) {
+          for (const m of methods) {
+            if (modifiers[m.name] !== m.expected_modifier) {
+              allCorrect = false;
+              break;
+            }
+          }
+        }
+        // Enforce logical constraints: public modifier MUST map to readwrite access
+        if (allCorrect) {
+          for (const key of Object.keys(modifiers)) {
+            if (modifiers[key] === 'public' && access[key] && access[key] !== 'readwrite') {
+              allCorrect = false;
+              break;
+            }
+          }
+        }
+        return allCorrect ? 1.0 : 0.2;
+      }
+
+      case 'interface_bridge': {
+        const mappings = (submission.mappings as Record<string, string[]>) || {};
+        const methods = (submission.methods as Record<string, string[]>) || {};
+
+        const expectedMappings = (config.expected_mappings as Record<string, string[]>) || {};
+        const expectedMethods = (config.expected_methods as Record<string, string[]>) || {};
+
+        // Helper to compare arrays ignoring order
+        const arrayEquals = (a?: string[], b?: string[]) => {
+          if (!a || !b) return false;
+          if (a.length !== b.length) return false;
+          const sortedA = [...a].sort();
+          const sortedB = [...b].sort();
+          return JSON.stringify(sortedA) === JSON.stringify(sortedB);
+        };
+
+        let isValid = true;
+        for (const cls of Object.keys(expectedMappings)) {
+          if (!arrayEquals(mappings[cls], expectedMappings[cls]) || !arrayEquals(methods[cls], expectedMethods[cls])) {
+            isValid = false;
+            break;
+          }
+        }
+        return isValid ? 1.0 : 0.2;
+      }
+
+      case 'assembly_yard': {
+        const relationships = (submission.relationships as Record<string, string>) || {};
+        const expected = (config.expected_relationships as Record<string, string>) || {};
+
+        let isValid = true;
+        for (const key of Object.keys(expected)) {
+          if (relationships[key] !== expected[key]) {
+            isValid = false;
+            break;
+          }
+        }
+        return isValid ? 1.0 : 0.2;
+      }
+
+      case 'pattern_forge': {
+        const roles = (submission.roles as Record<string, string>) || {};
+        const expected = (config.expected_roles as Record<string, string>) || {};
+
+        let isValid = true;
+        for (const key of Object.keys(expected)) {
+          if (roles[key] !== expected[key]) {
+            isValid = false;
+            break;
+          }
+        }
+        return isValid ? 1.0 : 0.2;
+      }
+
+      case 'solid_foundations': {
+        const violations = (submission.violations as Record<string, string>) || {};
+        const resolutions = (submission.resolutions as Record<string, string>) || {};
+
+        const expectedViolations = (config.expected_violations as Record<string, string>) || {};
+        const expectedResolutions = (config.expected_resolutions as Record<string, string>) || {};
+
+        let isValid = true;
+        for (const key of Object.keys(expectedViolations)) {
+          if (violations[key] !== expectedViolations[key] || resolutions[key] !== expectedResolutions[key]) {
+            isValid = false;
+            break;
+          }
+        }
+        return isValid ? 1.0 : 0.2;
+      }
+
+      case 'refactor_run': {
+        const actions = Array.isArray(submission.actions) ? submission.actions : [];
+        const expected = Array.isArray(config.expected_sequence) ? config.expected_sequence : [];
+        return JSON.stringify(actions) === JSON.stringify(expected) ? 1.0 : 0.2;
+      }
+
+      case 'code_review_court': {
+        const reviews = (submission.reviews as Record<string, string>) || {};
+        const expected = (config.expected_reviews as Record<string, string>) || {};
+
+        let isValid = true;
+        for (const key of Object.keys(expected)) {
+          if (reviews[key] !== expected[key]) {
+            isValid = false;
+            break;
+          }
+        }
+        return isValid ? 1.0 : 0.2;
+      }
+
       default:
         // Fallback for other/future game types
         return 1.0;
     }
+  }
+
+  private safeEval(expr: string, nVal: number): any {
+    const clean = (expr || '').replace(/\s+/g, '');
+    if (!/^[n0-9+\-*/=<>!]+$/.test(clean)) {
+      return null;
+    }
+    const replaced = clean.replace(/n/g, nVal.toString());
+
+    const compMatch = replaced.match(/^([+-]?\d+)(===|!==|==|!=|<=|>=|<|>)([+-]?\d+)$/);
+    if (compMatch && compMatch[1] !== undefined && compMatch[2] !== undefined && compMatch[3] !== undefined) {
+      const v1 = parseInt(compMatch[1], 10);
+      const op = compMatch[2];
+      const v2 = parseInt(compMatch[3], 10);
+      if (op === '===' || op === '==') return v1 === v2;
+      if (op === '!==' || op === '!=') return v1 !== v2;
+      if (op === '<=') return v1 <= v2;
+      if (op === '>=') return v1 >= v2;
+      if (op === '<') return v1 < v2;
+      if (op === '>') return v1 > v2;
+    }
+
+    const arithmeticMatch = replaced.match(/^([+-]?\d+)([+\-*/])([+-]?\d+)$/);
+    if (arithmeticMatch && arithmeticMatch[1] !== undefined && arithmeticMatch[2] !== undefined && arithmeticMatch[3] !== undefined) {
+      const v1 = parseInt(arithmeticMatch[1], 10);
+      const op = arithmeticMatch[2];
+      const v2 = parseInt(arithmeticMatch[3], 10);
+      if (op === '+') return v1 + v2;
+      if (op === '-') return v1 - v2;
+      if (op === '*') return v1 * v2;
+      if (op === '/' && v2 !== 0) return v1 / v2;
+      return null;
+    }
+
+    if (/^[+-]?\d+$/.test(replaced)) {
+      return parseInt(replaced, 10);
+    }
+
+    return null;
   }
 }

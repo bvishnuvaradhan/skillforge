@@ -246,7 +246,7 @@ export class OnboardingService {
   }
 
   async fastTrackUnlock(userId: string): Promise<string[]> {
-    const unlockedWorlds = ['variables-kingdom'];
+    const unlockedWorlds = ['variables-operators'];
 
     // 1. Check assessment score
     const assessment = await prisma.examAttempt.findFirst({

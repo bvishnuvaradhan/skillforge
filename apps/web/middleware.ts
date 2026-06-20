@@ -142,7 +142,7 @@ function applyCookies(res: NextResponse, cookies: string[]) {
 export const config = {
   matcher: [
     "/dashboard/:path*",
-    "/worlds/:path*",
+    "/roadmaps/:path*",
     "/profile/:path*",
     "/settings/:path*",
     "/onboarding/:path*",

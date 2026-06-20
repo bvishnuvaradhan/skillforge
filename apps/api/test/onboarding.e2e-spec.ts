@@ -257,10 +257,10 @@ describe('OnboardingController (e2e)', () => {
       expect(response.body.success).toBe(true);
       expect(response.body.data.dlt).toBeDefined();
       expect(response.body.data.dlt.overall_mastery).toBe(1.0);
-      expect(response.body.data.dlt.worlds_unlocked).toContain('variables-kingdom');
-      expect(response.body.data.dlt.worlds_unlocked).toContain('conditions-valley');
-      expect(response.body.data.dlt.worlds_unlocked).toContain('loop-forest');
-      expect(response.body.data.dlt.worlds_unlocked).toContain('array-arena');
+      expect(response.body.data.dlt.worlds_unlocked).toContain('variables-operators');
+      expect(response.body.data.dlt.worlds_unlocked).toContain('io-program-flow');
+      expect(response.body.data.dlt.worlds_unlocked).toContain('decision-making');
+      expect(response.body.data.dlt.worlds_unlocked).toContain('loops-iteration');
       expect(response.body.data.roadmap.steps).toBeDefined();
 
       // Verify db deactivation checks are cleared

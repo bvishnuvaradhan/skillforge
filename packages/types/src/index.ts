@@ -114,32 +114,110 @@ export interface World {
   updatedAt: Date;
 }
 
-export type InterviewType = 'ai' | 'human';
-export type InterviewSessionStatus = 'scheduled' | 'in_progress' | 'completed' | 'cancelled';
+export type InterviewSessionType = 'ai' | 'human';
+export type InterviewType = 'dsa' | 'coding' | 'system_design' | 'behavioral' | 'hr';
+export type InterviewStatus = 'scheduled' | 'in_progress' | 'completed' | 'cancelled';
+export type MentorRecommendation = 'ready' | 'needs_prep' | 'strong_candidate';
+export type MentorVerificationStatus = 'pending' | 'approved' | 'rejected' | 'suspended';
+export type ResumeTemplate = 'ats' | 'product' | 'fresher' | 'experienced';
 
 export interface InterviewSession {
   id: string;
   studentId: string;
   mentorId: string | null;
-  type: InterviewType;
-  interviewType: string;
-  status: InterviewSessionStatus;
+  type: InterviewSessionType;
+  interviewType: InterviewType;
+  targetCompany: string | null;
+  status: InterviewStatus;
+  scheduledAt: Date | null;
+  startedAt: Date | null;
+  endedAt: Date | null;
   recordingUrl: string | null;
-  pricePaid: number;
+  recordingConsent: boolean;
+  pricePaid: number | null;
   createdAt: Date;
   updatedAt: Date;
+}
+
+export interface InterviewFeedback {
+  id: string;
+  sessionId: string;
+  evaluatorId: string;
+  technicalScore: number;
+  problemSolvingScore: number;
+  communicationScore: number;
+  confidenceScore: number;
+  overallScore: number;
+  strengths: string;
+  improvements: string;
+  nextSteps: string;
+  recommendation: MentorRecommendation | null;
+  createdAt: Date;
+}
+
+export interface MentorProfile {
+  id: string;
+  userId: string;
+  bio: string;
+  headline: string;
+  expertise: string[];
+  experienceYears: number;
+  sessionPrice: number;
+  sessionDurationMinutes: number;
+  ratingAverage: number;
+  ratingCount: number;
+  rebookingRate: number;
+  verificationStatus: MentorVerificationStatus;
+  verifiedAt: Date | null;
+  totalEarned: number;
+  createdAt: Date;
+  updatedAt: Date;
+}
+
+export interface MentorAvailability {
+  id: string;
+  mentorId: string;
+  dayOfWeek: number;
+  startTime: string;
+  endTime: string;
+  isActive: boolean;
+  createdAt: Date;
+  updatedAt: Date;
+}
+
+export interface MentorReview {
+  id: string;
+  sessionId: string;
+  studentId: string;
+  mentorId: string;
+  rating: number;
+  comment: string | null;
+  createdAt: Date;
 }
 
 export interface Resume {
   id: string;
   userId: string;
   name: string;
-  template: string;
+  template: ResumeTemplate;
   content: Record<string, unknown>;
   pdfUrl: string | null;
   isPrimary: boolean;
   createdAt: Date;
   updatedAt: Date;
+}
+
+export interface ResumeScore {
+  id: string;
+  resumeId: string;
+  overallScore: number;
+  atsScore: number;
+  technicalScore: number;
+  projectScore: number;
+  completenessScore: number;
+  interviewReadinessScore: number;
+  suggestions: Record<string, unknown> | Array<unknown>;
+  computedAt: Date;
 }
 
 export * from "./questions";
@@ -151,16 +229,20 @@ export interface AssessmentAnswer {
   topic: string;
 }
 
-export type ExamType = "ONBOARDING_ASSESSMENT" | "CHECKPOINT" | "REASSESSMENT" | "FINAL_EVALUATION";
+export type ExamType = "ONBOARDING_ASSESSMENT" | "CHECKPOINT" | "REASSESSMENT" | "FINAL_EVALUATION" | "topic" | "full_dsa" | "competitive" | "company" | "adaptive";
 
 export interface ExamAttempt {
   id: string;
   userId: string;
+  examId: string | null;
   examType: ExamType;
   answers: AssessmentAnswer[];
   score: number | null;
   maxScore: number | null;
+  passed: boolean;
+  timeSeconds: number | null;
   topicScores: Record<string, number> | null;
+  startedAt: Date | null;
   submittedAt: Date;
   createdAt: Date;
   updatedAt: Date;

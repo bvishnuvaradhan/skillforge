@@ -3,7 +3,7 @@
 import { useEffect, useState, useCallback } from "react";
 import { motion } from "framer-motion";
 import {
-  Globe2,
+  Map,
   Zap,
   Flame,
   BookOpen,
@@ -295,11 +295,11 @@ function WorldProgressWidget({ worlds }: { worlds: WorldProgress[] }) {
       <div className="flex items-center justify-between">
         <div className="flex items-center gap-2">
           <div className="w-8 h-8 rounded-lg bg-brand-cyan/20 border border-brand-cyan/30 flex items-center justify-center">
-            <Globe2 className="w-4 h-4 text-brand-cyan" />
+            <Map className="w-4 h-4 text-brand-cyan" />
           </div>
           <span className="text-text-secondary text-sm font-medium">World Unlock Status</span>
         </div>
-        <a href="/worlds" className="text-xs text-brand-cyan hover:underline flex items-center gap-1">
+        <a href="/roadmaps" className="text-xs text-brand-cyan hover:underline flex items-center gap-1">
           Explore <ChevronRight className="w-3 h-3" />
         </a>
       </div>

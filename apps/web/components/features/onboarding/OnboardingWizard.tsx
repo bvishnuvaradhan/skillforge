@@ -302,6 +302,19 @@ export const OnboardingWizard = () => {
 
               <div className="grid grid-cols-1 md:grid-cols-2 gap-4 mt-2">
                 <button
+                  onClick={() => handleGoalSubmit(selectedGoal, "C")}
+                  disabled={isLoading}
+                  className="flex flex-col text-left p-5 bg-bg-primary/40 hover:bg-[#00B4D8]/5 border border-border hover:border-brand-cyan/40 rounded-xl transition-all duration-300 group"
+                >
+                  <span className="text-sm font-semibold text-text-primary group-hover:text-brand-cyan transition-colors">
+                    🛠️ C Track
+                  </span>
+                  <span className="text-xs text-text-secondary mt-1.5 leading-relaxed">
+                    Foundational systems programming language. Master pointers, arrays, structs, and manual reference management.
+                  </span>
+                </button>
+
+                <button
                   onClick={() => handleGoalSubmit(selectedGoal, "CPP")}
                   disabled={isLoading}
                   className="flex flex-col text-left p-5 bg-bg-primary/40 hover:bg-[#00B4D8]/5 border border-border hover:border-brand-cyan/40 rounded-xl transition-all duration-300 group"

@@ -4,8 +4,8 @@ export const setGoalSchema = z.object({
   goal: z.enum(['placements', 'competitive', 'dsa', 'interviews'], {
     message: 'Goal must be placements, competitive, dsa, or interviews',
   }),
-  language_track: z.enum(['CPP', 'JAVA', 'PYTHON', 'JAVASCRIPT'], {
-    message: 'Language track must be CPP, JAVA, PYTHON, or JAVASCRIPT',
+  language_track: z.enum(['C', 'CPP', 'JAVA', 'PYTHON', 'JAVASCRIPT'], {
+    message: 'Language track must be C, CPP, JAVA, PYTHON, or JAVASCRIPT',
   }).optional(),
 });
 
