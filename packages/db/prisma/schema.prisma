@@ -160,6 +160,7 @@ model User {
   updatedAt          DateTime        @default(now()) @updatedAt @map("updated_at")
   deletedAt          DateTime?       @map("deleted_at")
   selectedModel      String?         @map("selected_model")
+  status             String          @default("active")
 
   oauthAccounts      OauthAccount[]
   sessions           Session[]
@@ -184,6 +185,10 @@ model User {
   mentorReviews      MentorReview[]      @relation("MentorReviews")
   mentorProfile      MentorProfile?
   resumes            Resume[]
+  cohortMemberships  CohortMember[]
+  teamMemberships    TeamMember[]
+  submittedReports   Report[]            @relation("UserReports")
+  auditLogs          AuditLog[]
 
   @@index([role])
   @@map("users")
@@ -827,4 +832,119 @@ model ResumeScore {
   resume                   Resume   @relation(fields: [resumeId], references: [id], onDelete: Cascade)
 
   @@map("resume_scores")
+}
+
+enum ReportTargetType {
+  USER
+  MENTOR_PROFILE
+  COMMENT
+  INTERVIEW_SESSION
+}
+
+model Institution {
+  id        String    @id @default(uuid()) @db.Uuid
+  name      String
+  domain    String?
+  createdAt DateTime  @default(now()) @map("created_at")
+  updatedAt DateTime  @default(now()) @updatedAt @map("updated_at")
+
+  cohorts   Cohort[]
+
+  @@map("institutions")
+}
+
+model Cohort {
+  id            String         @id @default(uuid()) @db.Uuid
+  institutionId String         @map("institution_id") @db.Uuid
+  name          String
+  inviteCode    String         @unique @map("invite_code")
+  createdAt     DateTime       @default(now()) @map("created_at")
+  updatedAt     DateTime       @default(now()) @updatedAt @map("updated_at")
+
+  institution   Institution    @relation(fields: [institutionId], references: [id], onDelete: Cascade)
+  members       CohortMember[]
+
+  @@map("cohorts")
+}
+
+model CohortMember {
+  id                String   @id @default(uuid()) @db.Uuid
+  cohortId          String   @map("cohort_id") @db.Uuid
+  userId            String   @map("user_id") @db.Uuid
+  role              String   @default("student")
+  shareDataConsent  Boolean  @default(false) @map("share_data_consent")
+  joinedAt          DateTime @default(now()) @map("joined_at")
+
+  cohort            Cohort   @relation(fields: [cohortId], references: [id], onDelete: Cascade)
+  user              User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@unique([cohortId, userId])
+  @@map("cohort_members")
+}
+
+model Team {
+  id          String       @id @default(uuid()) @db.Uuid
+  name        String       @unique
+  inviteCode  String       @unique @map("invite_code")
+  createdAt   DateTime     @default(now()) @map("created_at")
+  updatedAt   DateTime     @default(now()) @updatedAt @map("updated_at")
+
+  members     TeamMember[]
+
+  @@map("teams")
+}
+
+model TeamMember {
+  id       String   @id @default(uuid()) @db.Uuid
+  teamId   String   @map("team_id") @db.Uuid
+  userId   String   @map("user_id") @db.Uuid
+  role     String   @default("member")
+  joinedAt DateTime @default(now()) @map("joined_at")
+
+  team     Team     @relation(fields: [teamId], references: [id], onDelete: Cascade)
+  user     User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@unique([teamId, userId])
+  @@map("team_members")
+}
+
+model Report {
+  id          String           @id @default(uuid()) @db.Uuid
+  reporterId  String           @map("reporter_id") @db.Uuid
+  targetType  ReportTargetType @map("target_type")
+  targetId    String           @map("target_id")
+  reason      String
+  status      String           @default("pending") // "pending", "resolved", "dismissed", "invalid_target"
+  actionTaken String?          @map("action_taken")
+  createdAt   DateTime         @default(now()) @map("created_at")
+  updatedAt   DateTime         @default(now()) @updatedAt @map("updated_at")
+
+  reporter    User             @relation("UserReports", fields: [reporterId], references: [id], onDelete: Cascade)
+
+  @@map("reports")
+}
+
+model AuditLog {
+  id        String   @id @default(uuid()) @db.Uuid
+  userId    String?  @map("user_id") @db.Uuid
+  action    String
+  details   Json?
+  ipAddress String?  @map("ip_address")
+  createdAt DateTime @default(now()) @map("created_at")
+
+  user      User?    @relation(fields: [userId], references: [id], onDelete: SetNull)
+
+  @@map("audit_logs")
+}
+
+model FeatureFlag {
+  id          String   @id @default(uuid()) @db.Uuid
+  key         String   @unique
+  description String?
+  isEnabled   Boolean  @default(false) @map("is_enabled")
+  rules       Json?
+  createdAt   DateTime @default(now()) @map("created_at")
+  updatedAt   DateTime @default(now()) @updatedAt @map("updated_at")
+
+  @@map("feature_flags")
 }
