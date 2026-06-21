@@ -4,21 +4,21 @@ import { useState, useEffect } from "react";
 import { useRouter } from "next/navigation";
 import { apiFetch } from "../../../lib/api";
 import { 
-  Briefcase, 
   Target, 
   Bot, 
   Award, 
   ArrowRight, 
-  TrendingUp, 
-  Sparkles, 
-  FileText, 
-  Linkedin,
-  ShieldCheck,
-  CheckCircle,
-  HelpCircle
+  FileText
 } from "lucide-react";
 import { toast } from "sonner";
 import { motion } from "framer-motion";
+
+// Custom SVG icon for LinkedIn (since brand icons are removed in lucide-react v1.x)
+const LinkedinIcon = ({ className }: { className?: string }) => (
+  <svg className={className} viewBox="0 0 24 24" fill="currentColor" aria-hidden="true">
+    <path d="M20.447 20.452h-3.554v-5.569c0-1.328-.027-3.037-1.852-3.037-1.853 0-2.136 1.445-2.136 2.939v5.667H9.351V9h3.414v1.561h.046c.477-.9 1.637-1.85 3.37-1.85 3.601 0 4.267 2.37 4.267 5.455v6.286zM5.337 7.433a2.062 2.062 0 0 1-2.063-2.065 2.064 2.064 0 1 1 2.063 2.065zm1.782 13.019H3.555V9h3.564v11.452zM22.225 0H1.771C.792 0 0 .774 0 1.729v20.542C0 23.227.792 24 1.771 24h20.451C23.2 24 24 23.227 24 22.271V1.729C24 .774 23.2 0 22.222 0h.003z" />
+  </svg>
+);
 
 interface ReadinessData {
   codingReadiness: number;
@@ -231,7 +231,7 @@ export default function CareerReadinessHub() {
           <div className="absolute top-0 right-0 w-32 h-32 bg-accent-purple/10 rounded-full blur-2xl"></div>
           <div className="flex items-center gap-3 mb-4">
             <div className="p-3 bg-accent-purple/20 text-accent-purple rounded-xl">
-              <Linkedin className="w-6 h-6" />
+              <LinkedinIcon className="w-6 h-6" />
             </div>
             <div>
               <h3 className="text-xl font-bold font-display text-text-primary">LinkedIn bio Optimizer</h3>

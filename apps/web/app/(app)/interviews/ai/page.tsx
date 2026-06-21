@@ -1,6 +1,6 @@
 "use client";
 
-import { useState, useEffect, useRef } from "react";
+import { useState, useEffect, useRef, Suspense } from "react";
 import { useSearchParams, useRouter } from "next/navigation";
 import { motion } from "framer-motion";
 import Editor from "@monaco-editor/react";
@@ -15,7 +15,7 @@ interface Message {
   timestamp?: string;
 }
 
-export default function AiInterviewRoom() {
+function AiInterviewRoomContent() {
   const searchParams = useSearchParams();
   const router = useRouter();
   const sessionId = searchParams.get("session_id");
@@ -276,5 +276,17 @@ export default function AiInterviewRoom() {
         </div>
       </div>
     </div>
+  );
+}
+
+export default function AiInterviewRoom() {
+  return (
+    <Suspense fallback={
+      <div className="flex h-screen bg-bg-primary items-center justify-center text-text-secondary font-display">
+        Loading AI Interview Room...
+      </div>
+    }>
+      <AiInterviewRoomContent />
+    </Suspense>
   );
 }

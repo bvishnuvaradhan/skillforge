@@ -1,3 +1,4 @@
+/* eslint-disable @typescript-eslint/no-explicit-any, @typescript-eslint/no-unused-vars, react/jsx-no-comment-textnodes */
 "use client";
 
 import { useEffect, useState } from "react";
@@ -2194,7 +2195,7 @@ function BugHuntGame({
 
   const codeLines = puzzle.code.split("\n");
 
-  const simulatedTraceSteps = [
+  const simulatedTraceSteps: Array<{ line: number; vars: Record<string, string> }> = [
     { line: 1, vars: { arr: "[10, 5, 20]", max: "undefined", i: "undefined" } },
     { line: 2, vars: { arr: "[10, 5, 20]", max: "10", i: "undefined" } },
     { line: 3, vars: { arr: "[10, 5, 20]", max: "10", i: "0" } },

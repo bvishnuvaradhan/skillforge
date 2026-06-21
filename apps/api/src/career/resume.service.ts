@@ -267,7 +267,7 @@ Ensure optimizedText is ready to copy-paste.`;
     // Startup Readiness: focus on projects (represented by resume) + coding/mastery
     let startupScore = (overallMastery * 0.30) + (avgExamScore * 0.20) + (avgInterviewScore * 0.20) + (resumeScore * 0.30);
     // Service Tier Readiness: foundational skills
-    let serviceScore = (overallMastery * 0.50) + (avgExamScore * 0.20) + (avgInterviewScore * 0.15) + (resumeScore * 0.15);
+    const serviceScore = (overallMastery * 0.50) + (avgExamScore * 0.20) + (avgInterviewScore * 0.15) + (resumeScore * 0.15);
 
     // Apply adjustments: if they haven't completed any interviews/exams, apply scaling discount
     if (examAttempts.length === 0) {

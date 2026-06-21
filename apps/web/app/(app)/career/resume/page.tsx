@@ -76,7 +76,7 @@ export default function ResumeBuilder() {
       setLoading(true);
       const res = await apiFetch<Resume[]>("/resumes");
       if (res.data.length > 0) {
-        setResume(res.data[0]);
+        setResume(res.data[0] ?? null);
       } else {
         // Create prefilled resume
         const newResume = await apiFetch<Resume>("/resumes", {

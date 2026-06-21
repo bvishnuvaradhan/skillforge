@@ -15,6 +15,7 @@ jest.mock('@skillforge/db', () => ({
     bossAttempt: {
       count: jest.fn(),
       create: jest.fn(),
+      findMany: jest.fn().mockResolvedValue([]),
     },
     userWorldProgress: {
       upsert: jest.fn(),
@@ -107,7 +108,10 @@ describe('BossSessionService', () => {
     badgeId: 'badge-id',
     questions: dummyQuestions,
     world: {
+      slug: 'world-slug',
       progressEntries: [{ status: 'unlocked' }],
+      lessons: [],
+      games: [],
     },
   };
 
@@ -146,7 +150,10 @@ describe('BossSessionService', () => {
       const lockedBoss = {
         ...dummyBoss,
         world: {
+          slug: 'world-slug',
           progressEntries: [{ status: 'locked' }],
+          lessons: [],
+          games: [],
         },
       };
       (prisma.bossBattle.findUnique as jest.Mock).mockResolvedValue(lockedBoss);

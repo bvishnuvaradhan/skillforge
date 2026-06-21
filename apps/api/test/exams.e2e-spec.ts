@@ -17,7 +17,7 @@ describe('ExamsController (e2e)', () => {
   let studentId = '';
   
   let attemptId = '';
-  let examId = '550e8400-e29b-41d4-a716-446655440000';
+  const examId = '550e8400-e29b-41d4-a716-446655440000';
 
   beforeAll(async () => {
     const moduleFixture: TestingModule = await Test.createTestingModule({
@@ -101,10 +101,10 @@ describe('ExamsController (e2e)', () => {
 
     it('should walk through the adaptive questions based on answer correctness', async () => {
       let currentQuestionId = 'e1'; // first easy question
-      let selectAnswer = 'O(n)'; // Correct for e1
+      const selectAnswer = 'O(n)'; // Correct for e1
 
       // Q1: Answer Correctly -> should change difficulty from Easy to Medium
-      let q1Res = await request(app.getHttpServer())
+      const q1Res = await request(app.getHttpServer())
         .post(`/exams/attempts/${attemptId}/answer`)
         .set('Cookie', studentCookie)
         .send({
@@ -122,7 +122,7 @@ describe('ExamsController (e2e)', () => {
       currentQuestionId = q2.id;
       
       // Q2: Answer Incorrectly -> should change difficulty back to Easy
-      let q2Res = await request(app.getHttpServer())
+      const q2Res = await request(app.getHttpServer())
         .post(`/exams/attempts/${attemptId}/answer`)
         .set('Cookie', studentCookie)
         .send({
@@ -138,26 +138,26 @@ describe('ExamsController (e2e)', () => {
 
       // Answer Q3, Q4, Q5 to reach limit of 6 questions
       const q3 = q2Res.body.data.nextQuestion;
-      let q3Res = await request(app.getHttpServer())
+      const q3Res = await request(app.getHttpServer())
         .post(`/exams/attempts/${attemptId}/answer`)
         .set('Cookie', studentCookie)
         .send({ questionId: q3.id, selectedAnswer: 'WrongAnswer' });
 
       const q4 = q3Res.body.data.nextQuestion;
-      let q4Res = await request(app.getHttpServer())
+      const q4Res = await request(app.getHttpServer())
         .post(`/exams/attempts/${attemptId}/answer`)
         .set('Cookie', studentCookie)
         .send({ questionId: q4.id, selectedAnswer: 'WrongAnswer' });
 
       const q5 = q4Res.body.data.nextQuestion;
-      let q5Res = await request(app.getHttpServer())
+      const q5Res = await request(app.getHttpServer())
         .post(`/exams/attempts/${attemptId}/answer`)
         .set('Cookie', studentCookie)
         .send({ questionId: q5.id, selectedAnswer: 'WrongAnswer' });
 
       // Q6: Submission of 6th answer -> should grade, calculate linear XP, update DLT, and mark completed
       const q6 = q5Res.body.data.nextQuestion;
-      let q6Res = await request(app.getHttpServer())
+      const q6Res = await request(app.getHttpServer())
         .post(`/exams/attempts/${attemptId}/answer`)
         .set('Cookie', studentCookie)
         .send({

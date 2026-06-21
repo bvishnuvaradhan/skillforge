@@ -203,7 +203,7 @@ describe('BossSessionAndProblems (e2e)', () => {
       freshStudentCookie = (loginRes.headers['set-cookie'] as unknown as string[]) || [];
       freshStudentId = loginRes.body.data.user.id;
 
-      let world = await prisma.world.findUnique({ where: { slug: 'variables-operators' } });
+      const world = await prisma.world.findUnique({ where: { slug: 'variables-operators' } });
       await prisma.userWorldProgress.create({
         data: {
           userId: freshStudentId,
