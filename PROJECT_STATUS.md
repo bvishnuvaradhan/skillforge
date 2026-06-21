@@ -139,6 +139,13 @@ Phase 6 Result:
 
 Remaining / Future Work
 - [ ] User Profile display page (/profile) with activity calendar and Top Skills
+- [ ] Production Hardening: Subprocess sandboxing for untrusted code execution (host-level security risk, priority based on launch scope):
+  - *Option A (Pilot Cohort Launch):* Acceptable to launch with current local subprocess execution; implement containerized sandbox (gVisor/Firecracker) immediately post-pilot.
+  - *Option B (Open Public Launch - RECOMMENDED):* Sandboxing is a critical launch blocker; must be resolved before public rollout to mitigate remote code execution (RCE) risk.
+- [ ] Feature Hardening & Debt:
+  - AST similarity parsers (tree-sitter/language-specific parsers) for non-JS tracks
+  - TURN/STUN WebRTC infrastructure for live collaboration video/audio feeds
+  - Expansion of adaptive exam question bank
 
 Blockers
 - none

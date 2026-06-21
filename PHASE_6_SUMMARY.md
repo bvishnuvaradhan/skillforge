@@ -124,3 +124,9 @@ All Phase 6 student-facing and admin-facing portals have been verified under var
 ### 2. WebRTC Video/Audio streams
 - **Limitation**: Video feeds on live collaborative interviews remain mocked on the client UI using fake status signals, due to WebRTC STUN/TURN infrastructure costs.
 - **TODO**: Wire up real signaling servers and STUN/TURN credentials to enable direct peer video connections in the career module mock rooms.
+
+### 3. Unsandboxed Code Execution (Host-Level Risk)
+- **Limitation**: Code submissions in boss fights are currently executed locally via child subprocesses without hypervisor/sandbox isolation.
+- **Strategy & Launch Scope Decisions**:
+  - **Option A (Pilot Launch):** For a small, trusted pilot cohort (e.g., restricted campus trial), launching with the current local execution setup is acceptable. Production sandboxing is scheduled to be completed immediately afterward before a wider rollout.
+  - **Option B (Public Launch - RECOMMENDED):** For an open public launch, subprocess sandboxing (e.g., gVisor, Firecracker microVMs, or AWS Lambda isolates) **must** be prioritized and implemented as a blocker *before* going live to prevent host-level remote code execution (RCE) and system compromise.
