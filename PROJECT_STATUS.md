@@ -1,7 +1,7 @@
 SkillForge — Project Status
-Last updated: June 20, 2026
-Current phase: Phase 6 — not started
-Overall progress: Phases 1–5 complete, Phase 6 not started
+Last updated: June 21, 2026
+Current phase: Launch Readiness / Production Hardening
+Overall progress: Phases 1–6 complete
 
 Phase 1 — Foundation
 Completed
@@ -123,6 +123,19 @@ Completed ✅ (119/119 tests passing)
 
 Phase 5 Result:
 119/119 E2E tests passing across 11 suites. Browser walkthrough verified successfully with Puppeteer generating 7 screenshots. Stripe commission split math explicitly verified: price_paid: $120.00 -> mentor credited: $102.00 (85% payout), and platform commission is $18.00 (15%). Adaptive exam run graded score and XP explicitly verified: final score: 14.29%, XP awarded: 17 (denominator = 7.0, points = 1.0). Exams seed data exhaustion and WebRTC live room video streaming limitations documented in PHASE_5_SUMMARY.md.
+Phase 6 — Community & Launch
+Completed ✅ (132/132 tests passing)
+
+- [x] Step 1: Database Schema Updates — added `ReportTargetType` enum and models (`Institution`, `Cohort`, `CohortMember`, `Team`, `TeamMember`, `Report`, `AuditLog`, `FeatureFlag`)
+- [x] Step 2: Instant account suspension — implemented user account suspension with instant Redis JWT strategy blacklist checking
+- [x] Step 3: Institutional analytics — built bulk enrollment provisioning for shell/invited accounts and analytics roster branching on dynamic student data sharing consent
+- [x] Step 4: Teams, Leaderboards & Moderation — implemented study team dashboards (create/join via secure code), global/cohort leaderboards standings toggle, and validation on reported entity target existence checks
+- [x] Step 5: AST Plagiarism Detector — built Levenshtein similarity analysis on normalized acorn JS/TS AST representations and regex structural tokenization for other languages (flagging matches >= 85% on submissions >= 50 nodes)
+- [x] Step 6: Client-side Next.js Portals — designed community hub page `/community`, roster manager `/institutions`, setting control and flags `/admin`, and moderation resolving queue `/admin/moderation`
+- [x] Step 7: Security Hardening — enforced HTTPS/TLS redirects, session cookie controls, restricted CORS origins, and performed high/critical vulnerability cleanups
+
+Phase 6 Result:
+132/132 E2E tests passing across 13 suites. All study teams, toggled leaderboards, admin metrics, feature flag toggles, and privacy data rosters verified through interactive automated browser walkthroughs. Instant account suspension Redis check validates O(1) response blocking. AST plagiarism engine and tokenization fallback verified on boss battle code submissions.
 
 Remaining / Future Work
 - [ ] User Profile display page (/profile) with activity calendar and Top Skills
@@ -140,4 +153,4 @@ Phase History
 - Phase 4C — status: completed ✅ (94/94 tests, all 5 games walkthrough-verified)
 - Phase 4D — status: completed ✅ (101/101 tests, all 7 games walkthrough-verified)
 - Phase 5 — status: completed ✅ (119/119 tests, Stripe split payment bypass & adaptive exams walkthrough verified)
-- Phase 6 — status: not started (Community & Launch)
+- Phase 6 — status: completed ✅ (132/132 tests, study teams, cohort analytics, moderation, and AST plagiarism detector verified)
